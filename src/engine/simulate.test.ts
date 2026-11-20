@@ -23,4 +23,13 @@ describe('simulate', () => {
     const r = simulate(300, CONTENT);
     expect(r.resolveRate.withClues).toBeGreaterThan(r.resolveRate.noClue);
   });
+  it('유형별로 판 수·평균 연차·엔딩을 집계한다', () => {
+    const r = simulate(100, CONTENT);
+    const rows = Object.values(r.byArchetype);
+    expect(rows.reduce((a, x) => a + x.games, 0)).toBe(100);
+    for (const [id, x] of Object.entries(r.byArchetype)) {
+      expect(CONTENT.archetypes[id]).toBeDefined();
+      expect(Object.values(x.endings).reduce((a, b) => a + b, 0)).toBe(x.games);
+    }
+  });
 });

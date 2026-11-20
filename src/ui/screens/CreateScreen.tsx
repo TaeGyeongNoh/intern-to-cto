@@ -35,7 +35,7 @@ export function CreateScreen({ onStart, saved, onContinue }: { onStart: (g: Game
   const [route, setRoute] = useState<RouteId>('commerce');
   const [seed, setSeed] = useState(newSeed);
   const [candidate, setCandidate] = useState(0);
-  const cands = useMemo(() => generateCandidates(position, seed), [position, seed]);
+  const cands = useMemo(() => generateCandidates(position, seed, CONTENT.archetypes), [position, seed]);
 
   const start = () => {
     const n = name.trim() || '김개발';
@@ -132,7 +132,7 @@ export function CreateScreen({ onStart, saved, onContinue }: { onStart: (g: Game
           </div>
           <p className={s.muted}>세 명 모두 OVR 45, 능력치 합 240. 배분만 달라요.</p>
           <div className={s.cands}>
-            {cands.map((st, i) => (
+            {cands.map(({ stats: st }, i) => (
               <button
                 key={i}
                 type="button"

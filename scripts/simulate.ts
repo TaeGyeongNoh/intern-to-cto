@@ -18,3 +18,10 @@ for (const id of all) {
 }
 const top = Math.max(...Object.values(r.endings)) / r.games;
 if (top > 0.35) console.log(`경고: 한 엔딩이 ${pct(top)}를 차지한다 (목표 35% 이하)`);
+console.log('유형별 (판 수 · 평균 연차 · 많이 나온 엔딩)');
+for (const a of Object.values(CONTENT.archetypes)) {
+  const x = r.byArchetype[a.id];
+  if (!x) continue;
+  const top3 = Object.entries(x.endings).sort((p, q) => q[1] - p[1]).slice(0, 3).map(([id, cnt]) => `${id} ${pct(cnt / x.games)}`).join(', ');
+  console.log(`  ${a.name.padEnd(8)} ${String(x.games).padStart(4)}판 · ${x.avgYears.toFixed(1)}년 · ${top3}`);
+}

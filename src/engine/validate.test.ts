@@ -61,4 +61,21 @@ describe('validateContent', () => {
     expect(errs).toContain('shop b: unknown shop flag shop:nope');
     expect(errs).toContain('shop c: invalid gamble');
   });
+  it('유형: 강점·약점 스탯, 겹침, 포지션당 3개 미만을 잡는다', () => {
+    const c: Content = {
+      ...CONTENT,
+      archetypes: {
+        a: { id: 'a', name: 'a', tagline: 'a', positions: ['backend'], spikes: ['impl', 'nope' as never], dumps: ['impl'] },
+        b: { id: 'x', name: 'b', tagline: 'b', positions: ['nowhere' as never], spikes: [], dumps: ['ai', 'infra', 'mental'] },
+      },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('archetype a: unknown stat nope');
+    expect(errs).toContain('archetype a: impl is both spike and dump');
+    expect(errs).toContain('archetype key b != id x');
+    expect(errs).toContain('archetype x: unknown position nowhere');
+    expect(errs).toContain('archetype x: needs 1-2 spikes');
+    expect(errs).toContain('archetype x: needs 1-2 dumps');
+    expect(errs).toContain('position sre: needs at least 3 archetypes');
+  });
 });

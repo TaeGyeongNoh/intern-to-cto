@@ -6,6 +6,7 @@ export const STAT_LABELS: Record<StatId, string> = {
 };
 
 export type PositionId = 'backend' | 'frontend' | 'sre' | 'ai';
+export const POSITION_IDS: readonly PositionId[] = ['backend', 'frontend', 'sre', 'ai'];
 export const ROUTE_IDS = ['commerce', 'finance', 'ai-startup'] as const;
 export type RouteId = (typeof ROUTE_IDS)[number];
 export type CompanyRoute = RouteId | 'whatap';
@@ -139,9 +140,31 @@ export type ShopItem = {
   gamble?: { chance: number; win: number; lose: number };
 };
 
+/** 시작 후보의 유형. 강점은 가장 높게, 약점은 가장 낮게 뽑힌다. */
+export type Archetype = {
+  id: string;
+  name: string;
+  tagline: string;
+  positions: PositionId[];
+  /** 강점 스탯 1~2개 */
+  spikes: StatId[];
+  /** 약점 스탯 1~2개 */
+  dumps: StatId[];
+  /** 시작할 때 한 번 적용하는 작은 보정 */
+  twist?: {
+    reputation?: number;
+    /** 번아웃 민감도 가감 (기본 0.8~1.2) */
+    burnoutProne?: number;
+    /** 이 성장형이 더 잘 나온다 */
+    growth?: GrowthType;
+  };
+};
+
 export type GameState = {
   name: string;
   position: PositionId;
+  /** 시작 후보 유형 (Archetype.id) */
+  archetypeId: string;
   route: CompanyRoute;
   year: number;
   age: number;
@@ -191,4 +214,5 @@ export type Content = {
   incidents: Record<string, Incident>;
   endings: Ending[];
   shop: Record<string, ShopItem>;
+  archetypes: Record<string, Archetype>;
 };

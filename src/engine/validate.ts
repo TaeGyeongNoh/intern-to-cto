@@ -1,7 +1,7 @@
 import { resolveCompanyId } from './career';
 import { PROLOGUE_START } from './game';
 import { shopFlag } from './shop';
-import { ROUTE_IDS, type Content, type Effects } from './types';
+import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Content, type Effects } from './types';
 
 export function validateContent(c: Content): string[] {
   const errs: string[] = [];
@@ -77,6 +77,21 @@ export function validateContent(c: Content): string[] {
   for (const e of c.endings) {
     if (ids.has(e.id)) errs.push(`duplicate ending ${e.id}`);
     ids.add(e.id);
+  }
+  const statIds = new Set<string>(STAT_IDS);
+  const positions = new Set<string>(POSITION_IDS);
+  for (const [key, a] of Object.entries(c.archetypes)) {
+    const where = `archetype ${a.id}`;
+    if (key !== a.id) errs.push(`archetype key ${key} != id ${a.id}`);
+    for (const p of a.positions) if (!positions.has(p)) errs.push(`${where}: unknown position ${p}`);
+    if (a.spikes.length < 1 || a.spikes.length > 2) errs.push(`${where}: needs 1-2 spikes`);
+    if (a.dumps.length < 1 || a.dumps.length > 2) errs.push(`${where}: needs 1-2 dumps`);
+    for (const id of [...a.spikes, ...a.dumps]) if (!statIds.has(id)) errs.push(`${where}: unknown stat ${id}`);
+    for (const id of a.spikes) if (a.dumps.includes(id)) errs.push(`${where}: ${id} is both spike and dump`);
+  }
+  for (const p of POSITION_IDS) {
+    const n = Object.values(c.archetypes).filter((a) => a.positions.includes(p)).length;
+    if (n < 3) errs.push(`position ${p}: needs at least 3 archetypes`);
   }
   if (!c.endings.some((e) => e.priority === 0)) errs.push('missing fallback ending (priority 0)');
   return errs;

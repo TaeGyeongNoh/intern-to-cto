@@ -18,6 +18,8 @@ export type SimReport = {
   houseRate: number;
   /** 판당 평균 상점 구매 수 */
   avgPurchases: number;
+  /** 시작 유형별 판 수·평균 연차·엔딩 분포 */
+  byArchetype: Record<string, { games: number; avgYears: number; endings: Record<string, number> }>;
 };
 
 const quantile = (xs: number[], q: number): number => {
@@ -40,6 +42,7 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
   const assets: number[] = [];
   let houses = 0;
   let purchases = 0;
+  const byArchetype: SimReport['byArchetype'] = {};
 
   for (let k = 0; k < n; k++) {
     const seed = seed0 + k;
@@ -71,7 +74,12 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
     assets.push(g.state.assets);
     if (g.state.purchases.includes('house')) houses++;
     purchases += g.state.purchases.length;
+    const row = (byArchetype[g.state.archetypeId] ??= { games: 0, avgYears: 0, endings: {} });
+    row.games += 1;
+    row.avgYears += y;
+    row.endings[id] = (row.endings[id] ?? 0) + 1;
   }
+  for (const row of Object.values(byArchetype)) row.avgYears /= row.games;
 
   const rate = ([ok, total]: number[]) => (total ? ok / total : 0);
   return {
@@ -86,5 +94,6 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
     assets: { median: quantile(assets, 0.5), p90: quantile(assets, 0.9) },
     houseRate: houses / n,
     avgPurchases: purchases / n,
+    byArchetype,
   };
 }
