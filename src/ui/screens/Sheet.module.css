@@ -1,0 +1,25 @@
+.hero { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; max-height: min(34vh, 280px); margin-bottom: 12px; border-radius: var(--radius-m); object-fit: cover; background: #fff; box-shadow: 0 0 0 1px var(--border); }
+.head { display: flex; align-items: center; gap: 8px; }
+.icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--primary-weak); color: var(--primary); }
+.kicker { flex: 1; font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: .02em; }
+.sub { margin-top: 8px; font-size: 12px; color: var(--text-2); }
+.text { margin: 12px 0 16px; font-size: 16px; line-height: 1.6; font-weight: 500; word-break: keep-all; overflow-wrap: anywhere; }
+
+.choices { display: grid; gap: 8px; padding-bottom: env(safe-area-inset-bottom); }
+.choice { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 48px; padding: 12px 14px; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); color: var(--text); cursor: pointer; transition: border-color .15s, background .15s, transform .1s; }
+.choice:not(:disabled):hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--surface)); }
+.choice:not(:disabled):active { transform: scale(.99); }
+.choice:disabled { cursor: not-allowed; }
+.dim { opacity: .5; }
+.meta { font-size: 12px; color: var(--text-2); }
+.chance { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* 필요한 관측 도구 카드가 없어 잠긴 선택지 */
+.locked { position: relative; padding: 12px 14px; border: 1.5px solid var(--card); border-left-width: 5px; border-radius: var(--radius-m); background: linear-gradient(100deg, color-mix(in srgb, var(--card) 18%, var(--surface)), var(--surface) 70%); overflow: hidden; }
+.locked::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); background-size: 250% 100%; animation: shine 3.2s ease-in-out infinite; pointer-events: none; }
+@keyframes shine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.lockedTop { display: flex; align-items: center; gap: 8px; }
+.lockIcon { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-m); background: var(--surface); box-shadow: 0 0 0 1px var(--card); }
+.lockedLabel { color: var(--text-2); font-size: 14px; }
+.wish { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--text); }
+.need { padding: 2px 8px; border-radius: 999px; background: var(--card); color: var(--card-ink); font-size: 11px; font-weight: 700; white-space: nowrap; }

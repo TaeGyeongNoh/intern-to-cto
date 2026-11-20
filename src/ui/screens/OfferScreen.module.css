@@ -1,0 +1,38 @@
+.wrap { min-height: 100vh; padding-bottom: 32px; overflow-x: hidden; }
+.head { padding: 28px 16px 20px; text-align: center; background: var(--surface); border-bottom: 1px solid var(--border); }
+.kicker { display: inline-flex; font-size: 12px; font-weight: 700; color: var(--primary); }
+.title { margin: 6px 0 4px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; word-break: keep-all; }
+.now { margin: 0; font-size: 13px; color: var(--text-2); }
+
+.list { display: grid; gap: 12px; padding-top: 16px; }
+
+.card { display: grid; gap: 10px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); box-shadow: var(--shadow); min-width: 0; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.coName { font-size: 19px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.raise { flex: none; font-weight: 700; font-size: 14px; color: var(--critical); font-variant-numeric: tabular-nums; }
+.raise[data-up='true'] { color: var(--good); }
+.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tier { font-size: 12px; color: var(--text-2); }
+.salary { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.stack { padding: 10px 12px; border-radius: var(--radius-m); background: var(--bg); display: grid; gap: 8px; }
+.stackHead { display: flex; justify-content: space-between; align-items: center; }
+.diff { display: inline-flex; gap: 6px; font-size: 12px; font-weight: 700; }
+.gain { color: var(--good); }
+.lose { color: var(--critical); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.grep { font-family: var(--mono); font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+.grep em { font-family: var(--font); font-style: normal; margin-left: 4px; color: var(--critical); font-weight: 500; }
+.cursor { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.cta button { width: 100%; height: 44px; font-weight: 700; }
+
+/* 숨은 회사 스카우트 제안 카드 */
+.scout { position: relative; border: 2px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--ai-gradient) border-box; background-size: 100% 100%, 200% 100%; animation: flow 3s linear infinite; box-shadow: 0 6px 20px rgba(139,82,255,.2); }
+@keyframes flow { to { background-position: 0 0, 200% 0; } }
+.scoutHead { display: flex; align-items: center; gap: 8px; margin: -16px -16px 0; padding: 10px 16px; border-radius: 6px 6px 0 0; background: var(--ai-header); color: #fff; font-size: 13px; font-weight: 700; }
+
+.stay { display: grid; justify-items: center; gap: 6px; margin-top: 4px; }
+.stay button { width: 100%; height: 44px; background: var(--surface); }
+.stayNote { font-size: 12px; color: var(--text-2); }

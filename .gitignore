@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+
+# 설계·계획 문서는 로컬 전용
+docs/

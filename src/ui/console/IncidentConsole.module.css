@@ -1,0 +1,171 @@
+/* 장애 콘솔: 다크 테마 크롬 (48px 헤더 + 사이드바 + 메인) */
+.root {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font); font-size: 13px;
+  overflow: hidden;
+  animation: enter .3s ease-out;
+}
+
+/* 장애 대응실 진입 연출: 붉은 비네팅이 세 번 뛰고, 이후 은은하게 숨쉰다 */
+.vignette {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 40, 40, .55) 100%);
+  opacity: 0;
+  animation: alarm .9s ease-out 3, breathe 5s ease-in-out 2.7s infinite;
+}
+
+/* ── 헤더 ── */
+.header {
+  position: relative; z-index: 6; flex: none;
+  height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 14px;
+  background: var(--header); border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 2px 0 var(--critical);
+}
+.crumbs { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; font-size: 13px; white-space: nowrap; }
+.crumbCo { color: var(--text-2); flex: none; max-width: 30%; overflow: hidden; text-overflow: ellipsis; }
+.crumbSep { color: var(--text-2); }
+.crumbIcon { color: var(--critical); margin-right: 2px; }
+.crumbInc { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.timer {
+  flex: none; display: flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-s); background: #000;
+  font-family: var(--mono); font-size: 12px;
+}
+.timerLabel { color: var(--text-2); font-size: 10.5px; letter-spacing: .06em; }
+.timerNum { font-variant-numeric: tabular-nums; font-weight: 700; }
+.liveDot { width: 7px; height: 7px; border-radius: 50%; background: var(--critical); animation: blink 1s steps(2, start) infinite; }
+.aiLabel { white-space: nowrap; }
+.header :global(button) { flex: none; padding: 6px 14px; font-size: 12.5px; }
+
+/* ── 본문 ── */
+.layout { position: relative; z-index: 1; flex: 1; display: flex; min-height: 0; }
+
+.side {
+  flex: none; width: 200px; overflow-y: auto;
+  background: var(--surface); border-right: 1px solid var(--border);
+  padding: 10px 8px; display: flex; flex-direction: column; gap: 2px;
+}
+.sideTitle { padding: 4px 8px 8px; font-size: 11px; font-weight: 700; color: var(--text-2); letter-spacing: .06em; }
+.item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 8px; border: 0; border-radius: var(--radius-s);
+  background: transparent; color: var(--text); text-align: left; cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background .15s;
+}
+.item:not(:disabled):hover { background: var(--header); }
+.item:disabled { cursor: default; }
+.item:disabled:not(.itemActive) { opacity: .45; }
+.itemActive { background: color-mix(in srgb, var(--primary) 18%, transparent); border-left-color: var(--primary); opacity: 1; }
+.itemIcon { flex: none; width: 22px; display: grid; place-items: center; }
+.grep { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--good); }
+.itemText { display: flex; flex-direction: column; min-width: 0; }
+.itemLabel { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subLocked { color: var(--text-2); }
+.itemSub { font-size: 11px; color: var(--text-2); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.main {
+  flex: 1; min-width: 0; overflow-y: auto;
+  padding: 16px 20px 32px; display: flex; flex-direction: column; gap: 14px;
+}
+
+.alarm {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--critical) 60%, transparent);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--critical) 16%, transparent);
+  font-weight: 500; line-height: 1.5;
+  animation: flash 1.2s ease-out 2;
+}
+.alarmBadge {
+  flex: none; padding: 1px 6px; border-radius: var(--radius-s);
+  background: var(--critical); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+}
+
+.status { display: flex; align-items: center; gap: 10px; color: var(--text-2); line-height: 1.5; }
+.status b { color: var(--text); }
+.stepper { flex: none; display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.stepper li { width: 18px; height: 4px; border-radius: 2px; background: var(--border); }
+.stepper .stepDone { background: var(--primary); }
+.stepper .stepNow { background: var(--warning); }
+
+.inspect { display: flex; flex-direction: column; gap: 10px; animation: rise .25s ease-out; }
+.result {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: var(--radius-m); border: 1px solid var(--border); background: var(--surface);
+}
+.resultHit { border-color: color-mix(in srgb, var(--good) 60%, transparent); box-shadow: inset 3px 0 0 var(--good); }
+.resultMiss { box-shadow: inset 3px 0 0 var(--text-2); }
+.resultText { min-width: 0; }
+.dim { color: var(--text-2); font-size: 12px; margin: 0; }
+
+.preview { display: flex; flex-direction: column; gap: 10px; }
+.guide { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.guideArrow { display: inline-flex; color: var(--primary); animation: nudge 1.2s ease-in-out infinite; }
+.hitLabel { vertical-align: middle; }
+.guide .narrow { display: none; }
+.ghost { opacity: .35; filter: grayscale(.5); pointer-events: none; user-select: none; }
+
+.actions { display: flex; flex-direction: column; gap: 10px; animation: rise .25s ease-out; }
+.actionsTitle { margin: 0; font-size: 16px; }
+.action {
+  display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-m);
+  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.action:not(:disabled):hover { border-color: var(--primary); transform: translateY(-1px); }
+.action:disabled { opacity: .45; cursor: not-allowed; }
+.actionLabel { font-size: 14px; font-weight: 700; }
+.actionMeta { display: flex; align-items: center; gap: 10px; }
+.chance { flex: none; width: 42px; font-family: var(--mono); font-weight: 700; font-size: 14px; }
+.bar { flex: 1; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: 3px; }
+
+@keyframes enter { from { opacity: 0; } }
+@keyframes alarm { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes breathe { 0%, 100% { opacity: .08; } 50% { opacity: .22; } }
+@keyframes flash { 0% { background: color-mix(in srgb, var(--critical) 45%, transparent); } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes nudge { 50% { transform: translateX(-4px); } }
+@keyframes nudgeUp { 50% { transform: translateY(-3px); } }
+@keyframes blink { to { visibility: hidden; } }
+
+/* ── 모바일: 사이드바 → 상단 가로 탭 ── */
+@media (max-width: 599px) {
+  .header { gap: 8px; padding: 0 8px 0 10px; }
+  .crumbs .crumbCo, .crumbs .crumbSep { display: none; }
+  .timerLabel { display: none; }
+  .timer { padding: 3px 6px; }
+  .aiLabel { display: none; }
+  .header :global(button) { padding: 6px 10px; }
+
+  .layout { flex-direction: column; }
+  .side {
+    width: auto; flex-direction: row; gap: 6px; overflow-x: auto; overflow-y: hidden;
+    padding: 8px; border-right: 0; border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+  .side::-webkit-scrollbar { display: none; }
+  .sideTitle { display: none; }
+  .item {
+    flex: none; width: auto; max-width: 70vw; padding: 7px 10px;
+    border: 1px solid var(--border); border-left-width: 1px; border-radius: 999px;
+  }
+  .itemActive { border-color: var(--primary); }
+  .itemSub { display: none; }
+  .itemSub.subLocked { display: block; }
+  .itemText { flex-direction: row; align-items: center; gap: 6px; }
+  .itemIcon { width: 18px; }
+  .main { padding: 12px 12px 28px; }
+  .guideArrow { animation-name: nudgeUp; }
+  .guide .wide, .wide { display: none; }
+  .guide .narrow, .narrow { display: inline-block; }
+  .status { align-items: flex-start; flex-direction: column; gap: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root, .vignette, .alarm, .inspect, .actions, .guideArrow, .liveDot { animation: none; }
+}

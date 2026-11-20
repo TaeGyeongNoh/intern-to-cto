@@ -1,0 +1,9 @@
+.icon { flex: none; display: inline-block; vertical-align: -0.15em; }
+.iconText { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+
+.muted { color: var(--text-2); }
+.primary { color: var(--primary); }
+.good { color: var(--good); }
+.warning { color: var(--warning); }
+.critical { color: var(--critical); }
+.inherit { color: inherit; }

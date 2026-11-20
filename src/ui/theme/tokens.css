@@ -1,0 +1,20 @@
+:root {
+  --primary: #296CF2; --primary-strong: #004BE0; --primary-weak: #D7E2FF;
+  --bg: #F5F5F5; --surface: #FFFFFF; --header: #FFFFFF; --border: #EAEAEA;
+  --text: #222222; --text-2: #757575;
+  --normal: #3DA9FF; --good: #00B543; --warning: #FF8800; --critical: #F34747; --yellow: #FFC700;
+  --ai-gradient: linear-gradient(90deg, #296CF2, #8B52FF, #296CF2);
+  --ai-header: linear-gradient(90deg, #004BE0, #8B52FF);
+  --radius-s: 4px; --radius-m: 8px; --radius-l: 12px;
+  --shadow: 0 2px 4px 1px rgba(0,0,0,.08);
+  --font: 'Roboto', 'Noto Sans KR', sans-serif; --mono: Menlo, monospace;
+}
+[data-theme="dark"] {
+  --primary: #40A6FF; --bg: #000000; --surface: #222222; --header: #3C3C3C; --border: #4C4C4C;
+  --text: #FFFFFF; --text-2: #ADADAD;
+  --normal: #1999FF; --good: #00CC00; --warning: #FF9D1D; --critical: #FF5E5E; --yellow: #FFC132;
+  --hit-n1: #1999FF; --hit-n2: #1668BD; --hit-n3: #115595;
+  --hit-e1: #FFC132; --hit-e2: #FF9D1D; --hit-e3: #FF5E5E;
+  --step-method: #1999FF; --step-sql: #86EDE5; --step-httpc: #945FFF; --step-dbc: #FD964C; --step-socket: #FF5E5E;
+  --axis: #ADADAD; --grid: #4C4C4C;
+}

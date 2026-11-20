@@ -1,0 +1,28 @@
+.icon { display: inline-block; flex: none; vertical-align: middle; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 12px; line-height: 20px; }
+.chipDim { color: var(--text-2); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: var(--radius-m); padding: 8px 14px; cursor: pointer; font-weight: 500; transition: filter .15s, background .15s; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:not(:disabled):hover { filter: brightness(1.08); }
+.primary { background: var(--primary); color: #fff; }
+.ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.dark { background: #3C3C3C; color: #fff; }
+.ai { position: relative; border: 0; border-radius: 999px; color: #fff; background: #1b1b2b; padding: 8px 16px; isolation: isolate; }
+.ai::before { content: ''; position: absolute; inset: -2px; z-index: -1; border-radius: inherit; background: var(--ai-gradient); background-size: 200% 100%; animation: aiflow 2.4s linear infinite; }
+.ai::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: #1b1b2b; }
+@keyframes aiflow { to { background-position: 200% 0; } }
+
+.stat { display: grid; grid-template-columns: 4.2em minmax(48px, 1fr) minmax(2.2em, auto); align-items: center; gap: 8px; font-size: 13px; }
+.stat > span:first-child { white-space: nowrap; }
+.statTrack { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.statFill { height: 100%; background: var(--primary); border-radius: 4px; }
+.statNum { text-align: right; font-variant-numeric: tabular-nums; }
+.up, .down { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; }
+.up { color: var(--good); }
+.down { color: var(--critical); }
+
+.backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { width: 100%; max-width: 560px; max-height: 90vh; overflow: auto; background: var(--surface); color: var(--text); border-radius: var(--radius-l) var(--radius-l) 0 0; padding: 16px; box-shadow: var(--shadow); }
+@media (min-width: 600px) { .backdrop { align-items: center; } .sheet { border-radius: var(--radius-l); } }
+.aiMark { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg, #296CF2, #8B52FF); }

@@ -1,0 +1,53 @@
+.wrap { min-height: 100vh; padding-bottom: 96px; overflow-x: hidden; }
+
+.hero { position: relative; padding: 40px 16px 32px; text-align: center; color: #fff; background: linear-gradient(135deg, #004BE0 0%, #296CF2 55%, #8B52FF 100%); overflow: hidden; }
+.hero::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 85% 15%, rgba(255,255,255,.22), transparent 45%); pointer-events: none; }
+.markTile { position: relative; z-index: 1; display: inline-block; width: 64px; height: 64px; margin-bottom: 10px; border-radius: 18px; background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.18); overflow: hidden; }
+.markTile img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.18); }
+.title { position: relative; z-index: 1; margin: 0 0 4px; font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+.sub { margin: 0; font-size: 13px; opacity: .85; }
+
+.continue { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -16px; position: relative; z-index: 1; border-color: var(--primary); }
+
+.section { margin-top: 24px; }
+.h2Row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; font-weight: 700; }
+.step { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; }
+.muted { color: var(--text-2); font-size: 12px; }
+
+.input { width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); color: var(--text); font: inherit; font-size: 16px; }
+.input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-weak); }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pick { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 12px; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); color: var(--text); box-shadow: var(--shadow); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.pick:hover { border-color: var(--primary-weak); }
+.pick:active { transform: scale(.98); }
+.on { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-weak), var(--shadow); }
+.glyph { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-m); background: var(--primary-weak); color: var(--primary); transition: background .15s, color .15s; }
+.on .glyph { background: var(--primary); color: #fff; }
+.avatar { display: block; width: 52px; height: 52px; border-radius: 50%; object-fit: cover; background: #fff; box-shadow: 0 0 0 1px var(--border); transition: box-shadow .15s; }
+.on .avatar { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); }
+.routeHead .glyph { width: 28px; height: 28px; }
+.desc { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.incident { display: inline-flex; align-items: center; gap: 6px; }
+.incidentIcon { color: var(--critical); }
+
+.routes { display: grid; gap: 8px; }
+.route { gap: 6px; }
+.routeHead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.routeBody { display: flex; align-items: center; gap: 10px; width: 100%; }
+.routeText { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.routeArt { flex: none; display: block; width: 96px; height: 64px; aspect-ratio: 3 / 2; border-radius: var(--radius-m); object-fit: cover; background: #fff; box-shadow: 0 0 0 1px var(--border); }
+@media (min-width: 600px) { .routeArt { width: 120px; height: 80px; } }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.cands { display: grid; gap: 8px; margin-top: 8px; }
+.cand { align-items: stretch; gap: 6px; }
+.candHead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.ovr { font-size: 12px; color: var(--text-2); }
+.ovr b { font-size: 18px; color: var(--primary); }
+@media (min-width: 600px) { .cands { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); }
+.bottomInner { max-width: 528px; margin: 0 auto; }
+.bottomInner button { width: 100%; height: 52px; font-size: 16px; font-weight: 700; box-shadow: 0 4px 12px rgba(41,108,242,.35); }
