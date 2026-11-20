@@ -71,6 +71,10 @@ describe('joinCompany', () => {
     expect(r.yearsAtCompany).toBe(0);
     expect(r.salary).toBe(7000);
   });
+  it('이직 이야기는 조사를 맞춘다', () => {
+    expect(joinCompany(makeState(), { companyId: 'coupangpang', role: 'main', salary: 7000 }, CONTENT).record.story.at(-1)).toContain('쿠팡팡으로 이직했다.');
+    expect(joinCompany(makeState(), { companyId: 'toastbank', role: 'main', salary: 7000 }, CONTENT).record.story.at(-1)).toContain('토스트뱅크로 이직했다.');
+  });
   it('와탭 스카우트 수락은 플래그를 남긴다', () => {
     const r = joinCompany(makeState(), { companyId: 'whatap', role: 'main', salary: 7000, special: 'whatap-scout' }, CONTENT);
     expect(r.flags).toContain('whatap-joined');

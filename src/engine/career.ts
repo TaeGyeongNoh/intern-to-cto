@@ -1,4 +1,5 @@
 import { applyEffects } from './effects';
+import { withJosa } from './josa';
 import type { Rng } from './rng';
 import { roleFor } from './roles';
 import { offerSalary } from './salary';
@@ -91,7 +92,7 @@ export function joinCompany(s: GameState, offer: Offer, c: Content): GameState {
   if (offer.special === 'whatap-scout') {
     return applyEffects(next, { flags: ['whatap-joined'], traits: { 관측성전도사: 2 }, story: '와탭랩스의 스카우트 제안을 받아들였다.' });
   }
-  return applyEffects(next, { story: `${co.name}(으)로 이직했다.` });
+  return applyEffects(next, { story: `${withJosa(co.name, '(으)로')} 이직했다.` });
 }
 
 export function determineEnding(s: GameState, c: Content): Ending {

@@ -1,3 +1,4 @@
+import { withJosa } from './josa';
 import type { Rng } from './rng';
 import { computeTitle, nextTitle, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
 import { reviewSalary } from './salary';
@@ -91,11 +92,11 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   const feed = [`연말 평가 ${rating}/5 · ${title} · 연봉 ${salary.toLocaleString('ko-KR')}만원`];
   const story = [...s.record.story];
   if (kind === 'promoted') {
-    feed.push(`${title}(으)로 승진!`);
-    story.push(`${s.year}년 · ${company.name}에서 ${title}(으)로 승진했다.`);
+    feed.push(`${withJosa(title, '(으)로')} 승진!`);
+    story.push(`${s.year}년 · ${company.name}에서 ${withJosa(title, '(으)로')} 승진했다.`);
   } else if (kind === 'assigned') {
-    feed.push(`${title}(으)로 발령`);
-    story.push(`${s.year}년 · ${company.name}에서 ${title}을(를) 맡았다.`);
+    feed.push(`${withJosa(title, '(으)로')} 발령`);
+    story.push(`${s.year}년 · ${company.name}에서 ${withJosa(title, '을/를')} 맡았다.`);
   }
   let result: GameState = {
     ...next,

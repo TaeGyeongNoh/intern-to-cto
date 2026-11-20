@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { withJosa } from './josa';
 import { CONTENT } from '../content';
 import { createRng } from './rng';
 import { ageFactor, RETIRE_AGE, review, runYear } from './season';
@@ -70,15 +71,15 @@ describe('review', () => {
     const s = makeState({ title: '주니어', stats: { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 } });
     const r = review(s, createRng(9), CONTENT);
     expect(r.state.title).not.toBe('주니어');
-    expect(r.feed.join('\n')).toContain(`${r.state.title}(으)로 승진!`);
+    expect(r.feed.join('\n')).toContain(`${withJosa(r.state.title, '(으)로')} 승진!`);
   });
   it('IC에서 매니지먼트로 바뀌면 발령으로 기록한다', () => {
     const s = makeState({ title: '프린시펄', track: 'mgmt' });
     const r = review(s, createRng(9), CONTENT);
     expect(r.state.title).toBe('팀장');
-    expect(r.feed.join('\n')).toContain('팀장(으)로 발령');
+    expect(r.feed.join('\n')).toContain('팀장으로 발령');
     expect(r.feed.join('\n')).not.toContain('승진');
-    expect(r.state.record.story.at(-1)).toContain('팀장을(를) 맡았다');
+    expect(r.state.record.story.at(-1)).toContain('팀장을 맡았다');
   });
   it('매니지먼트 트랙에서도 직급은 내려가지 않는다', () => {
     const s = makeState({ title: 'VP of Engineering', track: 'mgmt' });

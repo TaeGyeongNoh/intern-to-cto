@@ -1,3 +1,4 @@
+import { josa } from '../../engine/josa';
 import type { CompanyRoute, Tier } from '../../engine/types';
 import {
   Activity, Calendar, CircleCheck, CircleX, ClipboardList, CornerDownRight, FileText, Flag, House, Minus, Plane, Search, Sparkles, TrendingUp,
@@ -22,13 +23,8 @@ export const ROUTE_TONE: Record<CompanyRoute, string> = {
   commerce: '#FF8800', finance: '#00B543', 'ai-startup': '#8B52FF', whatap: '#296CF2',
 };
 
-/** 받침 유무로 이/가 고르기 (영문은 끝 글자 발음 기준 대략) */
-export function iGa(word: string): string {
-  const ch = word.trim().at(-1) ?? '';
-  const code = ch.charCodeAt(0);
-  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 ? '이' : '가';
-  return /[lmnLMN0136780]/.test(ch) ? '이' : '가';
-}
+/** 받침 유무로 이/가 고르기 */
+export const iGa = (word: string): string => josa(word, '이/가');
 
 /** 카드 컬러 위에 올릴 글자색 (밝은 색이면 진한 글자) */
 export function inkOn(hex: string): string {

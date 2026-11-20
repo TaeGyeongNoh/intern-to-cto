@@ -1,5 +1,6 @@
 import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer } from './career';
 import { applyEffects } from './effects';
+import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
 import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES } from './incident';
 import { createRng } from './rng';
@@ -184,7 +185,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       if (i < p.offers.length) {
         const offer = p.offers[i];
         s = joinCompany(s, offer, c);
-        feed.push(`${c.companies[offer.companyId].name}(으)로 이직!`);
+        feed.push(`${withJosa(c.companies[offer.companyId].name, '(으)로')} 이직!`);
       } else {
         if (p.offers.some((o) => o.special)) s = applyEffects(s, { flags: ['scout-declined'] });
         feed.push('지금 회사에 남는다');
