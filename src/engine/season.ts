@@ -1,5 +1,5 @@
 import type { Rng } from './rng';
-import { computeTitle, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
+import { computeTitle, nextTitle, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
 import { ovr, POSITION_WEIGHTS } from './stats';
 import { STAT_IDS, type Content, type GameState, type GrowthType } from './types';
 import { clamp } from './util';
@@ -86,12 +86,15 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   const reputation = clamp(s.reputation + (rating - 3) * 3, 0, 100);
   const salary = Math.round(s.salary * (1 + Math.max(0, rating - 2) * 0.04));
   const next: GameState = { ...s, reputation, salary, maxSalary: Math.max(s.maxSalary, salary) };
-  const title = computeTitle(next, o);
+  const { title, kind } = nextTitle(s.title, computeTitle(next, o));
   const feed = [`연말 평가 ${rating}/5 · ${title} · 연봉 ${salary.toLocaleString('ko-KR')}만원`];
   const story = [...s.record.story];
-  if (title !== s.title) {
+  if (kind === 'promoted') {
     feed.push(`${title}(으)로 승진!`);
     story.push(`${s.year}년 · ${company.name}에서 ${title}(으)로 승진했다.`);
+  } else if (kind === 'assigned') {
+    feed.push(`${title}(으)로 발령`);
+    story.push(`${s.year}년 · ${company.name}에서 ${title}을(를) 맡았다.`);
   }
   let result: GameState = {
     ...next,

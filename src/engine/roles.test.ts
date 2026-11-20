@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeTitle, roleFor } from './roles';
+import { computeTitle, nextTitle, roleFor } from './roles';
 import { makeState } from './testing';
 
 describe('roleFor', () => {
@@ -25,5 +25,17 @@ describe('computeTitle', () => {
     expect(computeTitle(makeState({ track: 'mgmt' }), 70)).toBe('VP of Engineering');
     expect(computeTitle(makeState({ track: 'mgmt', reputation: 59 }), 80)).toBe('VP of Engineering');
     expect(computeTitle(makeState({ track: 'mgmt', reputation: 60 }), 78)).toBe('CTO');
+  });
+});
+
+describe('nextTitle', () => {
+  it('같은 트랙에서는 높은 쪽', () => {
+    expect(nextTitle('스태프', '시니어')).toEqual({ title: '스태프' });
+    expect(nextTitle('시니어', '스태프')).toEqual({ title: '스태프', kind: 'promoted' });
+    expect(nextTitle('CTO', '팀장')).toEqual({ title: 'CTO' });
+    expect(nextTitle('팀장', 'VP of Engineering')).toEqual({ title: 'VP of Engineering', kind: 'promoted' });
+  });
+  it('트랙이 바뀌면 발령', () => {
+    expect(nextTitle('프린시펄', '팀장')).toEqual({ title: '팀장', kind: 'assigned' });
   });
 });

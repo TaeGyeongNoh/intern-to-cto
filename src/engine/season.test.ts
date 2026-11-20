@@ -59,4 +59,29 @@ describe('review', () => {
     const s = makeState({ yearScore: -50 });
     expect(review(s, createRng(8), CONTENT).state.salary).toBeGreaterThanOrEqual(s.salary);
   });
+  it('능력치가 떨어져도 직급은 내려가지 않고 승진 로그도 없다', () => {
+    const s = makeState({ title: '스태프', yearsInCareer: 10 });
+    const r = review(s, createRng(9), CONTENT);
+    expect(r.state.title).toBe('스태프');
+    expect(r.feed.join('\n')).not.toContain('승진');
+    expect(r.state.record.story.join('\n')).not.toContain('승진');
+  });
+  it('실제로 직급이 오르면 승진으로 기록한다', () => {
+    const s = makeState({ title: '주니어', stats: { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 } });
+    const r = review(s, createRng(9), CONTENT);
+    expect(r.state.title).not.toBe('주니어');
+    expect(r.feed.join('\n')).toContain(`${r.state.title}(으)로 승진!`);
+  });
+  it('IC에서 매니지먼트로 바뀌면 발령으로 기록한다', () => {
+    const s = makeState({ title: '프린시펄', track: 'mgmt' });
+    const r = review(s, createRng(9), CONTENT);
+    expect(r.state.title).toBe('팀장');
+    expect(r.feed.join('\n')).toContain('팀장(으)로 발령');
+    expect(r.feed.join('\n')).not.toContain('승진');
+    expect(r.state.record.story.at(-1)).toContain('팀장을(를) 맡았다');
+  });
+  it('매니지먼트 트랙에서도 직급은 내려가지 않는다', () => {
+    const s = makeState({ title: 'VP of Engineering', track: 'mgmt' });
+    expect(review(s, createRng(9), CONTENT).state.title).toBe('VP of Engineering');
+  });
 });
