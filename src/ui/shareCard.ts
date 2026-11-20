@@ -38,7 +38,7 @@ export function cardData(g: Game): CardData {
   return {
     endingId: st.endingId ?? 'ending',
     title: ending?.title ?? '커리어 종료',
-    who: `${st.name} · ${st.title} · ${POSITION_LABELS[st.position]} · ${years}년`,
+    who: [st.name, st.title, POSITION_LABELS[st.position], CONTENT.archetypes[st.archetypeId]?.name, `${years}년`].filter(Boolean).join(' · '),
     stats: [
       { label: '막아낸 장애', value: `${r.incidentsResolved}/${r.incidentsTotal}` },
       { label: '평균 MTTR', value: avgMttr },

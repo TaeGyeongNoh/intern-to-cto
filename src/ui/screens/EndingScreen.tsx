@@ -94,7 +94,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
         <h1 className={s.title}>{ending?.title ?? '커리어 종료'}</h1>
         <p className={s.desc}>{ending?.description}</p>
         <div className={s.who}>
-          {st.name} · {st.title} {POSITION_LABELS[st.position]} · {st.age}세 · OVR {ovr(st.stats, st.position)}
+          {st.name} · {st.title} {POSITION_LABELS[st.position]}{CONTENT.archetypes[st.archetypeId] ? ` · ${CONTENT.archetypes[st.archetypeId].name}` : ''} · {st.age}세 · OVR {ovr(st.stats, st.position)}
         </div>
       </header>
 

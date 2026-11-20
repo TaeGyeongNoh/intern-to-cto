@@ -18,6 +18,11 @@
 .statTrack { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .statFill { height: 100%; background: var(--primary); border-radius: 4px; }
 .statNum { text-align: right; font-variant-numeric: tabular-nums; }
+.strong { font-weight: 700; }
+.strong .statNum { color: var(--primary); }
+.plain .statFill { opacity: .45; }
+.weak { color: var(--text-2); }
+.weak .statFill { background: var(--text-2); opacity: .45; }
 .up, .down { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; }
 .up { color: var(--good); }
 .down { color: var(--critical); }

@@ -31,5 +31,22 @@ describe('EndingScreen 공유 모드', () => {
     expect(html).toContain('나도 해보기');
     expect(html).toContain('카드 저장');
     expect(html).toContain('링크 복사');
+    expect(html).toContain(CONTENT.archetypes[g.state.archetypeId].name);
+  });
+});
+
+describe('유형 표시', () => {
+  it('생성 화면 후보 카드에 유형 이름과 한 줄 소개가 나온다', async () => {
+    const { CreateScreen } = await import('./screens/CreateScreen');
+    const html = renderToString(<CreateScreen onStart={() => {}} onContinue={() => {}} />);
+    const shown = Object.values(CONTENT.archetypes).filter((a) => html.includes(a.name) && html.includes(a.tagline.replace(/"/g, '&quot;')));
+    expect(shown).toHaveLength(3);
+  });
+  it('홈 화면과 공유 카드에 유형 이름이 나온다', async () => {
+    const { cardData } = await import('./shareCard');
+    const g = newGame({ name: '유형왕', position: 'ai', route: 'ai-startup', candidate: 2 }, 5, CONTENT);
+    const name = CONTENT.archetypes[g.state.archetypeId].name;
+    expect(renderToString(<GameView game={g} log={[]} onInput={() => {}} onRestart={() => {}} />)).toContain(name);
+    expect(cardData(g).who).toContain(name);
   });
 });

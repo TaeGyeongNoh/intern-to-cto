@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CONTENT } from '../../content';
 import { newGame, type Game } from '../../engine/game';
 import { generateCandidates, ovr, POSITION_LABELS } from '../../engine/stats';
-import { ROUTE_IDS, ROUTE_LABELS, STAT_IDS, STAT_LABELS, type CardId, type PositionId, type RouteId } from '../../engine/types';
+import { ROUTE_IDS, ROUTE_LABELS, STAT_IDS, STAT_LABELS, type CardId, type PositionId, type RouteId, type StatId } from '../../engine/types';
 import { Button, Chip, StatBar } from '../components/Icon';
 import {
   ChevronRight, Dices, Landmark, Rocket, ShoppingCart, Siren, type IconType,
@@ -130,23 +130,28 @@ export function CreateScreen({ onStart, saved, onContinue }: { onStart: (g: Game
             <h2 className={s.h2}><span className={s.step}>4</span>나는 어떤 신입?</h2>
             <Button variant="ghost" onClick={() => { setSeed(newSeed()); setCandidate(0); }}><Dices size={16} />다시 뽑기</Button>
           </div>
-          <p className={s.muted}>세 명 모두 OVR 45, 능력치 합 240. 배분만 달라요.</p>
+          <p className={s.muted}>세 명 모두 OVR 45, 능력치 합 240. 유형마다 강점·약점과 타고난 기질이 달라요.</p>
           <div className={s.cands}>
-            {cands.map(({ stats: st }, i) => (
+            {cands.map(({ archetypeId, stats: st }, i) => {
+              const a = CONTENT.archetypes[archetypeId];
+              const tone = (id: StatId) => (a.spikes.includes(id) ? 'strong' : a.dumps.includes(id) ? 'weak' : 'plain');
+              return (
               <button
-                key={i}
+                key={archetypeId}
                 type="button"
                 className={`${s.pick} ${s.cand} ${candidate === i ? s.on : ''}`}
                 onClick={() => setCandidate(i)}
                 aria-pressed={candidate === i}
               >
                 <div className={s.candHead}>
-                  <b>후보 {i + 1}</b>
+                  <b className={s.candName}>{a.name}</b>
                   <span className={s.ovr}>OVR <b>{ovr(st, position)}</b></span>
                 </div>
-                {STAT_IDS.map((id) => <StatBar key={id} label={STAT_LABELS[id]} value={st[id]} />)}
+                <p className={s.tagline}>{a.tagline}</p>
+                {STAT_IDS.map((id) => <StatBar key={id} label={STAT_LABELS[id]} value={st[id]} tone={tone(id)} />)}
               </button>
-            ))}
+              );
+            })}
           </div>
         </section>
       </main>

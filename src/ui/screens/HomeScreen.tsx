@@ -28,6 +28,7 @@ function deckQuip(deck: readonly CardId[]): string {
 export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; onInput: (i: Input) => void }) {
   const st = game.state;
   const co = CONTENT.companies[st.companyId];
+  const archetype = CONTENT.archetypes[st.archetypeId];
   const o = ovr(st.stats, st.position);
   const role = roleFor(o, co.level);
   const hist = st.record.history;
@@ -50,7 +51,10 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
           <div className={s.profileText}>
             <div className={s.meta}>{st.year}년 · {st.age}세 · {st.yearsInCareer}년차</div>
             <div className={s.name}>{st.name}</div>
-            <div className={s.titleLine}>{st.title} {POSITION_LABELS[st.position]}</div>
+            <div className={s.titleLine}>
+              {st.title} {POSITION_LABELS[st.position]}
+              {archetype && <span className={s.archetype}>{archetype.name}</span>}
+            </div>
             <div className={s.coLine}>
               <b>{co.name}</b>
               <RouteBadge route={co.route} />

@@ -60,10 +60,11 @@ export function Button({ variant = 'primary', disabled, onClick, children }: {
   );
 }
 
-export function StatBar({ label, value, max = 99, delta }: { label: string; value: number; max?: number; delta?: number }) {
+/** tone: 강점(strong)은 굵게, 보통(plain)은 옅게, 약점(weak)은 회색으로 */
+export function StatBar({ label, value, max = 99, delta, tone }: { label: string; value: number; max?: number; delta?: number; tone?: 'strong' | 'plain' | 'weak' }) {
   const pctW = Math.max(0, Math.min(100, (value / max) * 100));
   return (
-    <div className={s.stat}>
+    <div className={`${s.stat} ${tone ? s[tone] : ''}`}>
       <span>{label}</span>
       <div className={s.statTrack}><div className={s.statFill} style={{ width: `${pctW}%` }} /></div>
       <span className={s.statNum}>
