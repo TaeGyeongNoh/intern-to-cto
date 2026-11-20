@@ -1,6 +1,6 @@
 import type { CompanyRoute, Tier } from '../../engine/types';
 import {
-  Calendar, CircleCheck, CircleX, ClipboardList, CornerDownRight, Dot, FileText, Flag, House, Minus, Plane, Search, Sparkles, TrendingUp,
+  Activity, Calendar, CircleCheck, CircleX, ClipboardList, CornerDownRight, FileText, Flag, House, Minus, Plane, Search, Sparkles, TrendingUp,
   type IconType,
 } from '../components/Icons';
 
@@ -55,5 +55,7 @@ export function feedIcon(line: string): { icon: IconType; tone: FeedTone } {
   if (line.includes('남는다')) return { icon: House, tone: 'muted' };
   if (line.startsWith('엔딩')) return { icon: Flag, tone: 'primary' };
   if (/^\d{4}년 · /.test(line)) return { icon: Calendar, tone: 'muted' };
-  return { icon: Dot, tone: 'muted' };
+  if (line.startsWith('OVR ')) return { icon: Activity, tone: 'muted' };
+  // 확률 없는 이벤트 선택지 등
+  return { icon: CornerDownRight, tone: 'muted' };
 }
