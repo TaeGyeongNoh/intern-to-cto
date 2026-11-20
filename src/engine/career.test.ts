@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { determineEnding, generateOffers, joinCompany, scoutEligible } from './career';
 import { createRng } from './rng';
+import { marketSalary } from './salary';
 import { ovr } from './stats';
 import { makeState } from './testing';
 
@@ -16,9 +17,16 @@ describe('generateOffers', () => {
         expect(co.hidden).toBeFalsy();
         expect(co.level).toBeGreaterThanOrEqual(o - 20);
         expect(co.level).toBeLessThanOrEqual(o + 3 + 4);
-        expect(offer.salary).toBeGreaterThanOrEqual(Math.round(s.salary * 1.08));
+        const market = marketSalary(s, co);
+        expect(offer.salary).toBe(Math.min(Math.round(market * 1.3), Math.max(market, Math.round(s.salary * 1.03))));
       }
     }
+  });
+  it('제안 연봉은 시장가 기준이라 고연봉자는 시장가 × 1.3에서 막힌다', () => {
+    const s = makeState({ reputation: 40, salary: 90000 });
+    for (let seed = 1; seed < 50; seed++)
+      for (const offer of generateOffers(s, createRng(seed), CONTENT))
+        expect(offer.salary).toBe(Math.round(marketSalary(s, CONTENT.companies[offer.companyId]) * 1.3));
   });
   it('창업 중에는 제안이 없다', () => {
     for (let seed = 1; seed < 50; seed++) expect(generateOffers(makeState({ flags: ['founder'] }), createRng(seed), CONTENT)).toEqual([]);

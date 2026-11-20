@@ -85,3 +85,14 @@ describe('review', () => {
     expect(review(s, createRng(9), CONTENT).state.title).toBe('VP of Engineering');
   });
 });
+
+describe('review 연봉', () => {
+  it('시장가를 크게 넘는 연봉은 더 오르지 않는다', () => {
+    const s = makeState({ salary: 50000, yearScore: 50 });
+    expect(review(s, createRng(8), CONTENT).state.salary).toBe(50000);
+  });
+  it('히스토리에 연봉을 남긴다', () => {
+    const r = review(makeState(), createRng(5), CONTENT).state;
+    expect(r.record.history[0].salary).toBe(r.salary);
+  });
+});

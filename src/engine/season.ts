@@ -1,5 +1,6 @@
 import type { Rng } from './rng';
 import { computeTitle, nextTitle, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
+import { reviewSalary } from './salary';
 import { ovr, POSITION_WEIGHTS } from './stats';
 import { STAT_IDS, type Content, type GameState, type GrowthType } from './types';
 import { clamp } from './util';
@@ -84,9 +85,9 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   const perf = o - company.level + (role === 'owner' ? 3 : 0) + s.yearScore + rng.int(-6, 6);
   const rating = ratingFromPerf(perf);
   const reputation = clamp(s.reputation + (rating - 3) * 3, 0, 100);
-  const salary = Math.round(s.salary * (1 + Math.max(0, rating - 2) * 0.04));
+  const { title, kind } = nextTitle(s.title, computeTitle({ ...s, reputation }, o));
+  const salary = reviewSalary({ ...s, title }, rating, company);
   const next: GameState = { ...s, reputation, salary, maxSalary: Math.max(s.maxSalary, salary) };
-  const { title, kind } = nextTitle(s.title, computeTitle(next, o));
   const feed = [`연말 평가 ${rating}/5 · ${title} · 연봉 ${salary.toLocaleString('ko-KR')}만원`];
   const story = [...s.record.story];
   if (kind === 'promoted') {
@@ -99,7 +100,7 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   let result: GameState = {
     ...next,
     title,
-    record: { ...s.record, story, history: [...s.record.history, { year: s.year, age: s.age, companyId: s.companyId, title, rating, ovr: o }] },
+    record: { ...s.record, story, history: [...s.record.history, { year: s.year, age: s.age, companyId: s.companyId, title, rating, ovr: o, salary }] },
   };
   if (s.burnout >= 100) {
     result = { ...result, retired: true, flags: result.flags.includes('burnout-out') ? result.flags : [...result.flags, 'burnout-out'] };

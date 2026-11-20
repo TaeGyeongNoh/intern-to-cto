@@ -112,7 +112,7 @@ export type Company = {
 
 export type CardDef = { id: CardId; name: string; color: string; views: ViewId[] };
 
-export type HistoryRow = { year: number; age: number; companyId: string; title: string; rating: number; ovr: number };
+export type HistoryRow = { year: number; age: number; companyId: string; title: string; rating: number; ovr: number; salary: number };
 
 export type GameState = {
   name: string;

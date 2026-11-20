@@ -1,6 +1,7 @@
 import { applyEffects } from './effects';
 import type { Rng } from './rng';
 import { roleFor } from './roles';
+import { offerSalary } from './salary';
 import { ovr } from './stats';
 import type { Company, Content, Ending, GameState, Role } from './types';
 import { clamp } from './util';
@@ -26,7 +27,7 @@ function makeOffer(co: Company, s: GameState, o: number): Offer {
   return {
     companyId: co.id,
     role: roleFor(o, co.level),
-    salary: Math.max(Math.round(co.baseSalary * (1 + (o - co.level) / 100)), Math.round(s.salary * 1.08)),
+    salary: offerSalary(s, co),
   };
 }
 

@@ -93,6 +93,17 @@ describe('장애 흐름', () => {
     g = apply(g, { t: 'pick', i: 0 }, CONTENT);
     expect(g.state.traits['문화']).toBe(1);
   });
+  it('장애 해결은 yearScore +3, 실패는 -5', () => {
+    const seen = new Set<number>();
+    for (let seed = 1; seed < 60; seed++) {
+      const g: Game = { ...base(['apm']), rngState: seed, queue: [{ kind: 'incident-action', incidentId: 'payment-latency', clues: 1 }, { kind: 'review' }] };
+      const r = apply(g, { t: 'pick', i: 0 }, CONTENT);
+      const ok = r.state.record.incidentsResolved === 1;
+      expect(r.state.yearScore).toBe(ok ? 3 : -5);
+      seen.add(r.state.yearScore);
+    }
+    expect(seen).toEqual(new Set([3, -5]));
+  });
 });
 
 describe('이벤트 흐름', () => {

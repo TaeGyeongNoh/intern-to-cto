@@ -140,7 +140,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       s = applyEffects(s, ok ? { ...a.effects, traits: { ...a.effects.traits, 불끄는영웅: (a.effects.traits?.['불끄는영웅'] ?? 0) + 1 } } : a.failEffects);
       s = {
         ...s,
-        yearScore: s.yearScore + (ok ? 3 : -3),
+        yearScore: s.yearScore + (ok ? 3 : -5),
         record: {
           ...s.record,
           incidentsTotal: s.record.incidentsTotal + 1,

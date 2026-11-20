@@ -9,6 +9,15 @@ export type SimReport = {
   maxYears: number;
   avgIncidents: number;
   resolveRate: { noClue: number; withClues: number };
+  /** 만원. 커리어 10년차 연말 연봉 중앙값 (10년 이상 플레이한 판만) */
+  salaryYear10Median: number;
+  maxSalary: { median: number; p90: number; max: number };
+};
+
+const quantile = (xs: number[], q: number): number => {
+  if (xs.length === 0) return 0;
+  const sorted = [...xs].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
 };
 
 const POSITIONS: PositionId[] = ['backend', 'frontend', 'sre', 'ai'];
@@ -20,6 +29,8 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
   let maxYears = 0;
   let incidents = 0;
   const agg = { noClue: [0, 0], withClues: [0, 0] };
+  const year10: number[] = [];
+  const maxSalaries: number[] = [];
 
   for (let k = 0; k < n; k++) {
     const seed = seed0 + k;
@@ -45,6 +56,9 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
     years += y;
     maxYears = Math.max(maxYears, y);
     incidents += g.state.record.incidentsTotal;
+    const row10 = g.state.record.history[9];
+    if (row10) year10.push(row10.salary);
+    maxSalaries.push(g.state.maxSalary);
   }
 
   const rate = ([ok, total]: number[]) => (total ? ok / total : 0);
@@ -55,5 +69,7 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
     maxYears,
     avgIncidents: incidents / n,
     resolveRate: { noClue: rate(agg.noClue), withClues: rate(agg.withClues) },
+    salaryYear10Median: quantile(year10, 0.5),
+    maxSalary: { median: quantile(maxSalaries, 0.5), p90: quantile(maxSalaries, 0.9), max: quantile(maxSalaries, 1) },
   };
 }

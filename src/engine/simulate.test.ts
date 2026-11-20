@@ -10,6 +10,12 @@ describe('simulate', () => {
     expect(r.avgYears).toBeGreaterThan(5);
     expect(r.maxYears).toBeLessThanOrEqual(26);
   });
+  it('연봉 분포를 낸다', () => {
+    const r = simulate(100, CONTENT);
+    expect(r.salaryYear10Median).toBeGreaterThan(0);
+    expect(r.maxSalary.p90).toBeGreaterThanOrEqual(r.maxSalary.median);
+    expect(r.maxSalary.max).toBeGreaterThanOrEqual(r.maxSalary.p90);
+  });
   it('결정론적이다', () => {
     expect(simulate(30, CONTENT, 7)).toEqual(simulate(30, CONTENT, 7));
   });
