@@ -24,6 +24,7 @@ import {
   CornerDownRight as LCornerDownRight,
   Dices as LDices,
   Dot as LDot,
+  Download as LDownload,
   EyeOff as LEyeOff,
   FileText as LFileText,
   Flag as LFlag,
@@ -31,6 +32,7 @@ import {
   House as LHouse,
   Inbox as LInbox,
   Landmark as LLandmark,
+  Link as LLink,
   Lock as LLock,
   Megaphone as LMegaphone,
   MessageCircle as LMessageCircle,
@@ -95,6 +97,7 @@ export const ClipboardList = make(LClipboardList, 'ClipboardList');
 export const CornerDownRight = make(LCornerDownRight, 'CornerDownRight');
 export const Dices = make(LDices, 'Dices');
 export const Dot = make(LDot, 'Dot');
+export const Download = make(LDownload, 'Download');
 export const EyeOff = make(LEyeOff, 'EyeOff');
 export const FileText = make(LFileText, 'FileText');
 export const Flag = make(LFlag, 'Flag');
@@ -102,6 +105,7 @@ export const Flame = make(LFlame, 'Flame');
 export const House = make(LHouse, 'House');
 export const Inbox = make(LInbox, 'Inbox');
 export const Landmark = make(LLandmark, 'Landmark');
+export const Link = make(LLink, 'Link');
 export const Lock = make(LLock, 'Lock');
 export const Megaphone = make(LMegaphone, 'Megaphone');
 export const MessageCircle = make(LMessageCircle, 'MessageCircle');

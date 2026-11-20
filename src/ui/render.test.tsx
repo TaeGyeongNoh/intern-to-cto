@@ -19,3 +19,17 @@ describe('GameView 스모크', () => {
     }
   });
 });
+
+describe('EndingScreen 공유 모드', () => {
+  it('공유된 커리어 배너와 공유 버튼이 렌더된다', async () => {
+    const { EndingScreen } = await import('./screens/EndingScreen');
+    const r = createRng(99);
+    let g = newGame({ name: '공유왕', position: 'backend', route: 'finance', candidate: 0 }, 9, CONTENT);
+    while (pending(g).kind !== 'ended') g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+    const html = renderToString(<EndingScreen game={g} shared onRestart={() => {}} />);
+    expect(html).toContain('공유왕님의 커리어');
+    expect(html).toContain('나도 해보기');
+    expect(html).toContain('카드 저장');
+    expect(html).toContain('링크 복사');
+  });
+});

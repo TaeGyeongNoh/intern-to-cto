@@ -1,18 +1,21 @@
+import { useEffect, useRef, useState } from 'react';
 import { CONTENT } from '../../content';
 import { CARDS } from '../../content/cards';
 import type { Game } from '../../engine/game';
 import { ovr, POSITION_LABELS } from '../../engine/stats';
 import type { CardId } from '../../engine/types';
 import { Button, Chip } from '../components/Icon';
-import { Camera, IconText, RotateCcw } from '../components/Icons';
+import { Download, Link, Play, RotateCcw } from '../components/Icons';
 import { ENDING_ART } from '../art';
+import { shareUrl } from '../share';
 import { won } from './format';
 import c from './common.module.css';
 import s from './EndingScreen.module.css';
 
 const ALL_CARDS = Object.keys(CARDS) as CardId[];
 
-export function EndingScreen({ game, onRestart }: { game: Game; onRestart: () => void }) {
+/** shared: 남이 공유한 커리어를 보는 읽기 전용 모드 (onRestart = "나도 해보기") */
+export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestart: () => void; shared?: boolean }) {
   const st = game.state;
   const ending = CONTENT.endings.find((e) => e.id === st.endingId);
   const r = st.record;
@@ -20,9 +23,59 @@ export function EndingScreen({ game, onRestart }: { game: Game; onRestart: () =>
   const years = r.history.length || st.yearsInCareer;
   const isWhatap = st.endingId === 'whatap';
   const art = st.endingId ? ENDING_ART[st.endingId] : undefined;
+  const { toast, show } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const saveCard = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { downloadShareCard } = await import('../shareCard');
+      await downloadShareCard(game);
+      show('카드를 저장했어요');
+    } catch (e) {
+      console.error(e);
+      show('카드를 만들지 못했어요');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyLink = async () => {
+    let url: string;
+    try {
+      url = shareUrl(game);
+    } catch (e) {
+      console.error(e);
+      show('링크를 만들지 못했어요');
+      return;
+    }
+    const mobile = typeof navigator.share === 'function' && window.matchMedia?.('(pointer: coarse)').matches;
+    if (mobile) {
+      try {
+        await navigator.share({ title: `인턴에서 CTO까지 — ${ending?.title ?? '커리어'}`, text: `${st.name}님의 커리어: ${ending?.title ?? ''}`, url });
+        return;
+      } catch (e) {
+        if ((e as DOMException)?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      show('링크를 복사했어요');
+    } catch (e) {
+      console.error(e);
+      show('링크를 복사하지 못했어요');
+    }
+  };
 
   return (
     <div className={s.wrap}>
+      {shared && (
+        <div className={s.sharedBar}>
+          <span className={s.sharedName}>{`${st.name}님의 커리어`}</span>
+          <Button onClick={onRestart}><Play size={14} />나도 해보기</Button>
+        </div>
+      )}
       <header className={`${s.hero} ${isWhatap ? s.heroWhatap : ''}`}>
         {art && <img className={s.art} src={art} alt={ending ? `엔딩 일러스트: ${ending.title}` : ''} width={960} height={640} decoding="async" />}
         <div className={s.kicker}>ENDING</div>
@@ -58,15 +111,18 @@ export function EndingScreen({ game, onRestart }: { game: Game; onRestart: () =>
           </ol>
         </section>
 
-        <section className={s.share} aria-label="공유 카드">
-          <IconText icon={Camera}>공유 카드 · 링크 복사</IconText>
-          <span className={s.soon}>곧 나와요</span>
+        <section className={s.share} aria-label="공유">
+          <Button variant="ghost" disabled={busy} onClick={saveCard}><Download size={16} />{busy ? '만드는 중…' : '카드 저장'}</Button>
+          <Button variant="ghost" onClick={copyLink}><Link size={16} />링크 복사</Button>
         </section>
 
         <div className={s.cta}>
-          <Button onClick={onRestart}><RotateCcw size={16} />새 커리어 시작</Button>
+          {shared
+            ? <Button onClick={onRestart}><Play size={16} />나도 해보기</Button>
+            : <Button onClick={onRestart}><RotateCcw size={16} />새 커리어 시작</Button>}
         </div>
       </main>
+      {toast && <div className={s.toast} role="status">{toast}</div>}
     </div>
   );
 }
@@ -78,4 +134,16 @@ function Stat({ label, value }: { label: string; value: string }) {
       <b className={s.statValue}>{value}</b>
     </div>
   );
+}
+
+function useToast() {
+  const [toast, setToast] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const show = (msg: string) => {
+    clearTimeout(timer.current);
+    setToast(msg);
+    timer.current = setTimeout(() => setToast(null), 2200);
+  };
+  return { toast, show };
 }

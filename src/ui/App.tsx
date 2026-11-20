@@ -4,6 +4,8 @@ import { apply, newGame, pending, type Game, type Input } from '../engine/game';
 import { clearSave, loadSave, writeSave, type SaveData } from './save';
 import { GameView } from './GameView';
 import { CreateScreen } from './screens/CreateScreen';
+import { EndingScreen } from './screens/EndingScreen';
+import { replayShare, SHARE_PARAM } from './share';
 
 const LOG_MAX = 100;
 
@@ -23,7 +25,28 @@ function restoreWithLog(d: SaveData): { game: Game; log: string[] } {
   return { game, log };
 }
 
+/** 주소에 ?r= 공유 결과가 있고 끝까지 리플레이되면 그 게임 (아니면 null) */
+function loadShared(): Game | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = new URLSearchParams(window.location.search).get(SHARE_PARAM);
+    return raw ? replayShare(raw, CONTENT) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearShareQuery() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete(SHARE_PARAM);
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  } catch { /* noop */ }
+}
+
 export function App() {
+  // 공유된 커리어 보기는 읽기 전용: 플레이어 자신의 저장에는 손대지 않는다
+  const [shared, setShared] = useState<Game | null>(loadShared);
   const [game, setGame] = useState<Game | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [saved, setSaved] = useState(() => loadSave());
@@ -52,7 +75,14 @@ export function App() {
   };
 
   const onInput = (input: Input) => {
-    if (!game) return;
+    const tryIt = () => {
+    clearShareQuery();
+    setShared(null);
+    window.scrollTo(0, 0);
+  };
+
+  if (shared) return <EndingScreen game={shared} shared onRestart={tryIt} />;
+  if (!game) return;
     try {
       const next = apply(game, input, CONTENT);
       const before = pending(game).kind;
@@ -75,6 +105,13 @@ export function App() {
     window.scrollTo(0, 0);
   };
 
+  const tryIt = () => {
+    clearShareQuery();
+    setShared(null);
+    window.scrollTo(0, 0);
+  };
+
+  if (shared) return <EndingScreen game={shared} shared onRestart={tryIt} />;
   if (!game) return <CreateScreen onStart={start} saved={saved} onContinue={resume} />;
   return <GameView game={game} log={log} onInput={onInput} onRestart={restart} />;
 }
