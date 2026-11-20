@@ -220,7 +220,7 @@ export const INCIDENTS: Incident[] = [
     ],
     actions: [
       { label: '구형 브라우저용 빌드 타깃 복구 후 재배포', baseChance: 0.25, perClue: 0.22, effects: { reputation: 3, stats: { debug: 1, impl: 1 } }, failEffects: { reputation: -3, burnout: 5 } },
-      { label: '"최신 브라우저를 써 주세요" 공지를 띄운다', baseChance: 0.4, perClue: 0.03, effects: { reputation: -1 }, failEffects: { reputation: -3 } },
+      { label: '"최신 브라우저를 써 주세요" 공지를 띄운다', baseChance: 0.3, perClue: 0.1, effects: { reputation: -1 }, failEffects: { reputation: -3 } },
     ],
   },
   {
@@ -257,7 +257,7 @@ export const INCIDENTS: Incident[] = [
     ],
     actions: [
       { label: 'GPU 전용 스케줄링 + 컨텍스트 길이 상한', baseChance: 0.25, perClue: 0.22, effects: { reputation: 3, stats: { infra: 1, ai: 1 } }, failEffects: { reputation: -3, burnout: 6 } },
-      { label: 'GPU를 한 장 더 빌린다', baseChance: 0.35, perClue: 0.05, effects: { reputation: 1 }, failEffects: { reputation: -2, burnout: 4 } },
+      { label: 'GPU를 한 장 더 빌린다', baseChance: 0.25, perClue: 0.1, effects: { reputation: 1 }, failEffects: { reputation: -2, burnout: 4 } },
     ],
   },
   {
@@ -294,7 +294,7 @@ export const INCIDENTS: Incident[] = [
     ],
     actions: [
       { label: '빠진 인덱스를 온라인으로 다시 만든다', baseChance: 0.25, perClue: 0.22, effects: { reputation: 3, stats: { debug: 1, design: 1 } }, failEffects: { reputation: -3, burnout: 5 } },
-      { label: 'DB 사양을 한 단계 올린다', baseChance: 0.3, perClue: 0.04, effects: {}, failEffects: { reputation: -2, burnout: 4 } },
+      { label: 'DB 사양을 한 단계 올린다', baseChance: 0.25, perClue: 0.1, effects: {}, failEffects: { reputation: -2, burnout: 4 } },
     ],
   },
   {
@@ -331,7 +331,7 @@ export const INCIDENTS: Incident[] = [
     ],
     actions: [
       { label: '도구 권한 분리 + 외부 문서는 데이터로만 취급', baseChance: 0.25, perClue: 0.22, effects: { reputation: 4, stats: { ai: 1, design: 1 } }, failEffects: { reputation: -4, burnout: 6 } },
-      { label: '시스템 프롬프트에 "절대 말하지 마"를 추가한다', baseChance: 0.3, perClue: 0.02, effects: {}, failEffects: { reputation: -4 } },
+      { label: '시스템 프롬프트에 "절대 말하지 마"를 추가한다', baseChance: 0.2, perClue: 0.1, effects: {}, failEffects: { reputation: -4 } },
     ],
   },
 ];

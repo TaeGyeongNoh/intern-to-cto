@@ -17,8 +17,8 @@ export const CTO_TIERS: readonly Tier[] = ['large', 'bigtech'];
 /** tier: 지금 회사 규모 (CTO는 대기업·빅테크에서만 나온다) */
 export function computeTitle(s: GameState, o: number, tier?: Tier): string {
   if (s.track === 'mgmt') {
-    if (o >= 84 && s.reputation >= 80 && tier && CTO_TIERS.includes(tier)) return 'CTO';
-    if (o >= 77 && s.reputation >= 70) return 'VP of Engineering';
+    if (o >= 85 && s.reputation >= 85 && tier && CTO_TIERS.includes(tier)) return 'CTO';
+    if (o >= 80 && s.reputation >= 70) return 'VP of Engineering';
     return '팀장';
   }
   if (o >= 85) return '프린시펄';
