@@ -14,6 +14,12 @@ import evFounder from '../assets/art/event-founder.webp';
 import evAiReplace from '../assets/art/event-ai-replace.webp';
 import evBurnout from '../assets/art/event-burnout.webp';
 import evChatbot from '../assets/art/event-chatbot.webp';
+import evPrologue from '../assets/art/event-prologue.webp';
+import evIntern from '../assets/art/event-intern.webp';
+import evJobFail from '../assets/art/event-jobfail.webp';
+import evBlackFriday from '../assets/art/event-blackfriday.webp';
+import evMigration from '../assets/art/event-migration.webp';
+import evMsa from '../assets/art/event-msa.webp';
 import endWhatap from '../assets/art/ending-whatap.webp';
 import endAiReplaced from '../assets/art/ending-ai-replaced.webp';
 import endBurnout from '../assets/art/ending-burnout.webp';
@@ -50,8 +56,19 @@ const EVENT_ART: Record<string, string> = {
   'founder-offer': evFounder, 'founder-outcome': evFounder,
   'ai-replacement': evAiReplace, rest: evBurnout,
   'ai-chatbot-1': evChatbot, 'ai-chatbot-2': evChatbot, 'ai-chatbot-3a': evChatbot, 'ai-chatbot-3b': evChatbot,
+  'prologue-start': evPrologue, 'prologue-result': evPrologue,
+  'prologue-intern': evIntern, 'prologue-fail': evJobFail,
 };
 
-// 프롤로그(prologue-*) 전용 일러스트는 아직 없어 임시로 기존 그림을 쓴다
+/** 아크 단위 일러스트 — 같은 접두사로 이벤트가 늘어나도 그대로 붙는다 (위에서부터 첫 매치) */
+const EVENT_ART_PREFIX: [prefix: string, art: string][] = [
+  ['prologue-intern', evIntern],
+  ['prologue-fail', evJobFail],
+  ['prologue-', evPrologue],
+  ['blackfriday-', evBlackFriday],
+  ['migration-', evMigration],
+  ['msa-', evMsa],
+];
+
 export const eventArt = (eventId: string): string | undefined =>
-  EVENT_ART[eventId] ?? (eventId.startsWith('prologue-') ? evFounder : undefined);
+  EVENT_ART[eventId] ?? EVENT_ART_PREFIX.find(([p]) => eventId.startsWith(p))?.[1];
