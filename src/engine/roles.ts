@@ -1,4 +1,4 @@
-import type { GameState, Role, Track } from './types';
+import type { GameState, Role, Tier, Track } from './types';
 
 export const ROLE_LABELS: Record<Role, string> = { owner: '오너', main: '메인', support: '서포트' };
 export const ROLE_FACTOR: Record<Role, number> = { owner: 1.3, main: 1.0, support: 0.6 };
@@ -11,10 +11,14 @@ export function roleFor(ovrValue: number, companyLevel: number): Role {
   return 'support';
 }
 
-export function computeTitle(s: GameState, o: number): string {
+/** CTO 자리가 있는 회사 규모 */
+export const CTO_TIERS: readonly Tier[] = ['large', 'bigtech'];
+
+/** tier: 지금 회사 규모 (CTO는 대기업·빅테크에서만 나온다) */
+export function computeTitle(s: GameState, o: number, tier?: Tier): string {
   if (s.track === 'mgmt') {
-    if (o >= 78 && s.reputation >= 60) return 'CTO';
-    if (o >= 70) return 'VP of Engineering';
+    if (o >= 84 && s.reputation >= 80 && tier && CTO_TIERS.includes(tier)) return 'CTO';
+    if (o >= 77 && s.reputation >= 70) return 'VP of Engineering';
     return '팀장';
   }
   if (o >= 85) return '프린시펄';

@@ -86,7 +86,7 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   const perf = o - company.level + (role === 'owner' ? 3 : 0) + s.yearScore + rng.int(-6, 6);
   const rating = ratingFromPerf(perf);
   const reputation = clamp(s.reputation + (rating - 3) * 3, 0, 100);
-  const { title, kind } = nextTitle(s.title, computeTitle({ ...s, reputation }, o));
+  const { title, kind } = nextTitle(s.title, computeTitle({ ...s, reputation }, o, company.tier));
   const salary = reviewSalary({ ...s, title }, rating, company);
   const next: GameState = { ...s, reputation, salary, maxSalary: Math.max(s.maxSalary, salary) };
   const feed = [`연말 평가 ${rating}/5 · ${title} · 연봉 ${salary.toLocaleString('ko-KR')}만원`];

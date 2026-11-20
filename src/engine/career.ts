@@ -14,6 +14,9 @@ export const WHATAP_ID = 'whatap';
 /** 히든 루트라 드물게: 조건을 채운 해에도 이 확률로만 제안이 온다. */
 export const SCOUT_CHANCE = 0.2;
 
+/** 작은 회사(tiny)를 졸업했다고 보는 OVR 차이 */
+export const TINY_OUTGROW = 10;
+
 export function scoutEligible(s: GameState): boolean {
   return (
     (s.traits['관측성전도사'] ?? 0) >= 4 &&
@@ -43,7 +46,7 @@ export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
   ]);
   const maxLevel = o + 3 + Math.floor(s.reputation / 10);
   const pool = Object.values(c.companies).filter(
-    (co) => !co.hidden && co.id !== s.companyId && co.level >= o - 20 && co.level <= maxLevel,
+    (co) => !co.hidden && co.id !== s.companyId && co.level >= o - 20 && co.level <= maxLevel && !(co.tiny && o > co.level + TINY_OUTGROW),
   );
   const offers: Offer[] = [];
   for (let k = 0; k < n && pool.length > 0; k++) {

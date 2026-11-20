@@ -14,9 +14,9 @@ export const COMPANIES: Company[] = [
   { id: 'downstage', name: '다운스테이지', route: 'ai-startup', tier: 'mid', level: 58, baseSalary: 5000, cards: ['gpu', 'ai-agent-obs', 'log'] },
   { id: 'neibu', name: '네이부', route: 'ai-startup', tier: 'bigtech', level: 78, baseSalary: 7200, cards: ['apm', 'server', 'k8s', 'db', 'log', 'browser', 'gpu', 'ai-agent-obs', 'whatap-ai'] },
   // 프롤로그 막차 스타트업 (루트별 하나, 시작 회사 아님)
-  { id: 'tiny-commerce', name: '오늘의떡집', route: 'commerce', tier: 'startup', level: 38, baseSalary: 3100, cards: [] },
-  { id: 'tiny-finance', name: '뱅크샐러드바', route: 'finance', tier: 'startup', level: 37, baseSalary: 3000, cards: [] },
-  { id: 'tiny-ai-startup', name: '프롬프트공방', route: 'ai-startup', tier: 'startup', level: 39, baseSalary: 3300, cards: [] },
+  { id: 'tiny-commerce', name: '오늘의떡집', route: 'commerce', tier: 'startup', level: 38, baseSalary: 3100, cards: [], tiny: true },
+  { id: 'tiny-finance', name: '뱅크샐러드바', route: 'finance', tier: 'startup', level: 37, baseSalary: 3000, cards: [], tiny: true },
+  { id: 'tiny-ai-startup', name: '프롬프트공방', route: 'ai-startup', tier: 'startup', level: 39, baseSalary: 3300, cards: [], tiny: true },
   // 히든
   { id: 'whatap', name: '와탭랩스', route: 'whatap', tier: 'whatap', level: 55, baseSalary: 5500, cards: ['apm', 'server', 'k8s', 'db', 'log', 'browser', 'gpu', 'ai-agent-obs', 'whatap-ai'], hidden: true },
 ];

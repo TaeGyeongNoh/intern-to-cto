@@ -22,9 +22,18 @@ describe('computeTitle', () => {
   });
   it('매니지먼트 트랙', () => {
     expect(computeTitle(makeState({ track: 'mgmt' }), 60)).toBe('팀장');
-    expect(computeTitle(makeState({ track: 'mgmt' }), 70)).toBe('VP of Engineering');
-    expect(computeTitle(makeState({ track: 'mgmt', reputation: 59 }), 80)).toBe('VP of Engineering');
-    expect(computeTitle(makeState({ track: 'mgmt', reputation: 60 }), 78)).toBe('CTO');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 70 }), 77)).toBe('VP of Engineering');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 79 }), 90, 'bigtech')).toBe('VP of Engineering');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 80 }), 84, 'large')).toBe('CTO');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 80 }), 84, 'bigtech')).toBe('CTO');
+  });
+  it('VP는 OVR 77·평판 70, CTO는 OVR 84·평판 80에 대기업·빅테크여야 한다', () => {
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 69 }), 90, 'bigtech')).toBe('팀장');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 90 }), 76, 'bigtech')).toBe('팀장');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 90 }), 83, 'bigtech')).toBe('VP of Engineering');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 90 }), 90, 'startup')).toBe('VP of Engineering');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 90 }), 90, 'mid')).toBe('VP of Engineering');
+    expect(computeTitle(makeState({ track: 'mgmt', reputation: 90 }), 90)).toBe('VP of Engineering');
   });
 });
 

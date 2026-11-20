@@ -28,6 +28,18 @@ describe('generateOffers', () => {
       for (const offer of generateOffers(s, createRng(seed), CONTENT))
         expect(offer.salary).toBe(Math.round(marketSalary(s, CONTENT.companies[offer.companyId]) * 1.3));
   });
+  it('작은 회사(tiny)는 OVR이 레벨 + 10을 넘으면 제안하지 않는다', () => {
+    const tiny = CONTENT.companies['tiny-commerce'];
+    const statsAt = (v: number) => ({ impl: v, design: v, debug: v, infra: v, ai: v, mental: v });
+    const seen = (v: number) => {
+      const s = makeState({ stats: statsAt(v), reputation: 0 });
+      const ids = new Set<string>();
+      for (let seed = 1; seed < 300; seed++) for (const o of generateOffers(s, createRng(seed), CONTENT)) ids.add(o.companyId);
+      return ids;
+    };
+    expect(seen(tiny.level + 5).has(tiny.id)).toBe(true);
+    expect(seen(tiny.level + 11).has(tiny.id)).toBe(false);
+  });
   it('창업 중에는 제안이 없다', () => {
     for (let seed = 1; seed < 50; seed++) expect(generateOffers(makeState({ flags: ['founder'] }), createRng(seed), CONTENT)).toEqual([]);
   });

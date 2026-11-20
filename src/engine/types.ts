@@ -112,6 +112,8 @@ export type Company = {
   cards: CardId[];
   start?: boolean;
   hidden?: boolean;
+  /** 작은 회사: 플레이어 OVR이 level + TINY_OUTGROW를 넘으면 이직 제안이 오지 않는다 */
+  tiny?: boolean;
 };
 
 export type CardDef = { id: CardId; name: string; color: string; views: ViewId[] };
