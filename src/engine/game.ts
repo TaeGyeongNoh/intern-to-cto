@@ -1,4 +1,4 @@
-import { determineEnding, generateOffers, joinCompany, type Offer } from './career';
+import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer } from './career';
 import { applyEffects } from './effects';
 import { choiceChance, choiceLocked, pickEvent } from './events';
 import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES } from './incident';
@@ -35,10 +35,21 @@ export type Game = {
 
 const pick = (i: number): Input => ({ t: 'pick', i });
 
+/** 첫 해 전에 거치는 취준·인턴 프롤로그의 시작 이벤트 (콘텐츠에 있을 때만) */
+export const PROLOGUE_START = 'prologue-start';
+
+const openingLine = (s: GameState, c: Content) => `${c.companies[s.companyId].name}에 신입으로 입사했다.`;
+
 export function newGame(setup: Setup, seed: number, c: Content): Game {
   const rng = createRng(seed);
-  const state = createInitialState(setup, seed, rng, c);
-  return drain({ setup, seed, rngState: rng.getState(), state, queue: [{ kind: 'year' }], log: [], feed: [] }, c);
+  let state = createInitialState(setup, seed, rng, c);
+  const queue: Pending[] = [{ kind: 'year' }];
+  if (c.events[PROLOGUE_START]) {
+    // 입사 문장은 프롤로그로 첫 회사가 정해진 뒤 첫 해를 넘길 때 남긴다
+    state = { ...state, record: { ...state.record, story: [] } };
+    queue.unshift({ kind: 'event', eventId: PROLOGUE_START });
+  }
+  return drain({ setup, seed, rngState: rng.getState(), state, queue, log: [], feed: [] }, c);
 }
 
 export function pending(g: Game): Pending {
@@ -87,6 +98,10 @@ export function apply(g: Game, input: Input, c: Content): Game {
 
   switch (p.kind) {
     case 'year': {
+      if (s.yearsInCareer === 0 && !s.record.story.some((line) => line.endsWith(openingLine(s, c)))) {
+        // 프롤로그 중 연봉 변화는 경력 전이므로 최고 연봉 기록은 첫 연봉부터 센다
+        s = { ...s, maxSalary: s.salary, record: { ...s.record, story: [...s.record.story, `${s.year}년 · ${openingLine(s, c)}`] } };
+      }
       const r = runYear(s, rng, c);
       s = r.state;
       feed.push(...r.feed);
@@ -104,7 +119,10 @@ export function apply(g: Game, input: Input, c: Content): Game {
       const chance = choiceChance(ch, s);
       const ok = chance === undefined ? true : rng.chance(chance);
       s = { ...s, seenEvents: [...s.seenEvents, ev.id], scheduled: s.scheduled.filter((x) => x.id !== ev.id) };
-      s = applyEffects(s, ok ? ch.effects : (ch.failEffects ?? {}));
+      const eff = ok ? ch.effects : (ch.failEffects ?? {});
+      if (eff.company) s = moveToCompany(s, eff.company, c);
+      s = applyEffects(s, eff);
+      if (eff.now) front = [{ kind: 'event', eventId: eff.now }];
       feed.push(chance === undefined ? ch.label : `${ch.label} — ${ok ? '성공' : '실패'}`);
       break;
     }

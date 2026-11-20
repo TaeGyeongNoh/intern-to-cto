@@ -55,6 +55,10 @@ export type Effects = {
   addCards?: CardId[];
   /** 다음 해에 이 이벤트를 예약 (현재 회사에 묶임) */
   next?: string;
+  /** 이 이벤트를 같은 해에 곧바로 이어서 띄운다 (이벤트 선택지에서만) */
+  now?: string;
+  /** 이 회사로 옮긴다 ("이직" 이야기 없이). `{route}`는 현재 루트로 바뀐다. (이벤트 선택지에서만) */
+  company?: string;
   track?: Track;
   retire?: boolean;
   /** 인생 이야기에 남길 문장 */

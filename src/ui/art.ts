@@ -52,4 +52,6 @@ const EVENT_ART: Record<string, string> = {
   'ai-chatbot-1': evChatbot, 'ai-chatbot-2': evChatbot, 'ai-chatbot-3a': evChatbot, 'ai-chatbot-3b': evChatbot,
 };
 
-export const eventArt = (eventId: string): string | undefined => EVENT_ART[eventId];
+// 프롤로그(prologue-*) 전용 일러스트는 아직 없어 임시로 기존 그림을 쓴다
+export const eventArt = (eventId: string): string | undefined =>
+  EVENT_ART[eventId] ?? (eventId.startsWith('prologue-') ? evFounder : undefined);

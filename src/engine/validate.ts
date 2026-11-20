@@ -1,3 +1,5 @@
+import { resolveCompanyId } from './career';
+import { PROLOGUE_START } from './game';
 import { ROUTE_IDS, type Content, type Effects } from './types';
 
 export function validateContent(c: Content): string[] {
@@ -6,13 +8,19 @@ export function validateContent(c: Content): string[] {
   const views = new Set<string>(['grep']);
   for (const card of Object.values(c.cards)) for (const v of card.views) views.add(v);
 
-  const targeted = new Set<string>();
-  const checkEffects = (where: string, e?: Effects) => {
+  const targeted = new Set<string>([PROLOGUE_START]);
+  const checkEffects = (where: string, e?: Effects, inEvent = false) => {
     if (!e) return;
     for (const card of e.addCards ?? []) if (!cardIds.has(card)) errs.push(`${where}: unknown card ${card}`);
-    if (e.next) {
-      targeted.add(e.next);
-      if (!c.events[e.next]) errs.push(`${where}: next → unknown event ${e.next}`);
+    for (const [key, id] of [['next', e.next], ['now', e.now]] as const) {
+      if (!id) continue;
+      targeted.add(id);
+      if (!c.events[id]) errs.push(`${where}: ${key} → unknown event ${id}`);
+    }
+    if (!inEvent && (e.now || e.company)) errs.push(`${where}: now/company are only supported in event choices`);
+    if (e.company) {
+      const ids = e.company.includes('{route}') ? ROUTE_IDS.map((r) => resolveCompanyId(e.company!, r)) : [e.company];
+      for (const id of ids) if (!c.companies[id]) errs.push(`${where}: unknown company ${id}`);
     }
   };
 
@@ -22,8 +30,8 @@ export function validateContent(c: Content): string[] {
     ev.choices.forEach((ch, i) => {
       const where = `event ${ev.id}#${i}`;
       if (ch.requires?.card && !cardIds.has(ch.requires.card)) errs.push(`${where}: unknown card ${ch.requires.card}`);
-      checkEffects(where, ch.effects);
-      checkEffects(where, ch.failEffects);
+      checkEffects(where, ch.effects, true);
+      checkEffects(where, ch.failEffects, true);
     });
   }
 
@@ -41,7 +49,7 @@ export function validateContent(c: Content): string[] {
   }
 
   for (const ev of Object.values(c.events)) {
-    if (ev.scheduledOnly && !targeted.has(ev.id)) errs.push(`event ${ev.id}: scheduledOnly but never targeted by next`);
+    if (ev.scheduledOnly && !targeted.has(ev.id)) errs.push(`event ${ev.id}: scheduledOnly but never targeted by next/now`);
   }
 
   for (const r of ROUTE_IDS) {

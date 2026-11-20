@@ -23,4 +23,27 @@ describe('validateContent', () => {
     const broken = { ...inc, steps: [{ prompt: 'p', options: [{ label: 'x', view: 'pods' as const, correct: true }] }] };
     expect(validateContent({ ...CONTENT, incidents: { 'oom-kill': broken } }).join('\n')).toContain('grep');
   });
+  it('깨진 now·company 참조를 잡는다', () => {
+    const c: Content = {
+      ...CONTENT,
+      events: { x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { now: 'nope', company: 'nowhere' } }] } },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('now → unknown event nope');
+    expect(errs).toContain('unknown company nowhere');
+  });
+  it('{route} 회사는 모든 루트에 있어야 한다', () => {
+    const { 'tiny-finance': _omit, ...companies } = CONTENT.companies;
+    expect(validateContent({ ...CONTENT, companies }).join('\n')).toContain('unknown company tiny-finance');
+  });
+  it('now로만 닿는 scheduledOnly 이벤트는 괜찮다', () => {
+    const c: Content = {
+      ...CONTENT,
+      events: {
+        x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { now: 'y' } }] },
+        y: { id: 'y', when: {}, scheduledOnly: true, text: 'y', choices: [{ label: 'b', effects: {} }] },
+      },
+    };
+    expect(validateContent(c)).toEqual([]);
+  });
 });

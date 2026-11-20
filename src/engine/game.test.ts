@@ -4,6 +4,7 @@ import { apply, newGame, pending, replay, validInputs, type Game, type Setup } f
 import { createRng } from './rng';
 import { RETIRE_AGE } from './season';
 import { makeState } from './testing';
+import type { Content, GameEvent } from './types';
 
 const setup: Setup = { name: '테스트', position: 'backend', route: 'commerce', candidate: 0 };
 
@@ -17,19 +18,90 @@ function playRandom(seed: number, s: Setup = setup): Game {
   return g;
 }
 
+/** 프롤로그(취준·인턴)를 첫 번째 선택지로 끝까지 진행한다 */
+function skipPrologue(g: Game): Game {
+  let game = g;
+  for (let guard = 0; pending(game).kind === 'event'; guard++) {
+    if (guard > 10) throw new Error('prologue did not end');
+    game = apply(game, validInputs(game, CONTENT)[0], CONTENT);
+  }
+  return game;
+}
+
 describe('newGame', () => {
-  it('첫 입력은 해 넘기기', () => {
+  it('첫 입력은 프롤로그(취준), 끝나면 해 넘기기', () => {
     const g = newGame(setup, 1, CONTENT);
-    expect(pending(g)).toEqual({ kind: 'year' });
-    const g2 = apply(g, { t: 'pick', i: 0 }, CONTENT);
+    expect(pending(g)).toEqual({ kind: 'event', eventId: 'prologue-start' });
+    const g1 = skipPrologue(g);
+    expect(pending(g1)).toEqual({ kind: 'year' });
+    expect(g1.state.year).toBe(2025);
+    expect(g1.state.seenEvents[0]).toBe('prologue-start');
+    const g2 = apply(g1, { t: 'pick', i: 0 }, CONTENT);
     expect(g2.state.year).toBe(2026);
     expect(g2.state.age).toBe(23);
     expect(g2.feed.length).toBeGreaterThan(0);
+    expect(g2.state.record.story.join('\n')).toContain(`${CONTENT.companies[g2.state.companyId].name}에 신입으로 입사했다.`);
+  });
+  it('프롤로그 이벤트가 없는 콘텐츠면 바로 해 넘기기', () => {
+    const { 'prologue-start': _omit, ...events } = CONTENT.events;
+    const g = newGame(setup, 1, { ...CONTENT, events });
+    expect(pending(g)).toEqual({ kind: 'year' });
+    expect(g.state.record.story[0]).toContain('신입으로 입사했다');
   });
   it('유효하지 않은 입력은 거부', () => {
     const g = newGame(setup, 1, CONTENT);
-    expect(() => apply(g, { t: 'pick', i: 3 }, CONTENT)).toThrow();
+    expect(() => apply(g, { t: 'pick', i: 9 }, CONTENT)).toThrow();
     expect(() => apply(g, { t: 'ask' }, CONTENT)).toThrow();
+  });
+  it('어떤 프롤로그 선택이든 결국 해 넘기기에 도달한다', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      let g = newGame(setup, seed, CONTENT);
+      const r = createRng(seed);
+      for (let guard = 0; pending(g).kind === 'event'; guard++) {
+        if (guard > 10) throw new Error('prologue did not end');
+        g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+      }
+      expect(pending(g)).toEqual({ kind: 'year' });
+      expect(g.state.companiesWorked).toEqual([g.state.companyId]);
+      expect(g.state.yearsInCareer).toBe(0);
+      const g1 = apply(g, { t: 'pick', i: 0 }, CONTENT);
+      expect(g1.state.maxSalary).toBeGreaterThanOrEqual(g1.state.salary);
+      expect(g1.state.maxSalary).toBe(Math.max(g.state.salary, g1.state.salary));
+    }
+  });
+});
+
+describe('now · company 효과', () => {
+  const ev = (id: string, effects: GameEvent['choices'][number]['effects']): GameEvent => ({ id, when: {}, scheduledOnly: true, text: id, choices: [{ label: id, effects }] });
+  const game = (eventId: string, over: Partial<Game['state']> = {}): Game => ({
+    setup, seed: 1, rngState: 1, state: makeState(over),
+    queue: [{ kind: 'event', eventId }, { kind: 'year' }], log: [], feed: [],
+  });
+
+  it('now는 같은 해에 바로 다음 이벤트를 끼워 넣는다', () => {
+    const c: Content = { ...CONTENT, events: { a: ev('a', { now: 'b' }), b: ev('b', {}) } };
+    const g = apply(game('a'), { t: 'pick', i: 0 }, c);
+    expect(g.queue).toEqual([{ kind: 'event', eventId: 'b' }, { kind: 'year' }]);
+    expect(g.state.year).toBe(makeState().year);
+    expect(g.state.scheduled).toEqual([]);
+  });
+  it('company는 회사·덱을 바꾸고 이직 대신 주어진 이야기를 남긴다', () => {
+    const c: Content = { ...CONTENT, events: { a: ev('a', { company: 'musinsarang', story: '친구 따라 옮겼다.' }) } };
+    const g = apply(game('a', { yearsInCareer: 3 }), { t: 'pick', i: 0 }, c);
+    expect(g.state.companyId).toBe('musinsarang');
+    expect(g.state.deck).toEqual(CONTENT.companies.musinsarang.cards);
+    expect(g.state.companiesWorked).toEqual(['dangeun', 'musinsarang']);
+    const story = g.state.record.story.join('\n');
+    expect(story).toContain('친구 따라 옮겼다.');
+    expect(story).not.toContain('이직');
+  });
+  it('커리어 시작 전 company는 첫 회사를 바꿔치기하고 {route}를 루트로 바꾼다', () => {
+    const c: Content = { ...CONTENT, events: { a: ev('a', { company: 'tiny-{route}' }) } };
+    const g = apply(game('a'), { t: 'pick', i: 0 }, c);
+    const tiny = CONTENT.companies['tiny-commerce'];
+    expect(g.state.companyId).toBe(tiny.id);
+    expect(g.state.companiesWorked).toEqual([tiny.id]);
+    expect(g.state.salary).toBe(tiny.baseSalary);
   });
 });
 

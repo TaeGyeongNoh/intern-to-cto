@@ -55,9 +55,8 @@ export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
   return offers;
 }
 
-export function joinCompany(s: GameState, offer: Offer, c: Content): GameState {
-  const co = c.companies[offer.companyId];
-  const next: GameState = {
+function enterCompany(s: GameState, co: Company, salary: number): GameState {
+  return {
     ...s,
     companyId: co.id,
     route: co.route,
@@ -65,11 +64,30 @@ export function joinCompany(s: GameState, offer: Offer, c: Content): GameState {
     cardsSeen: [...new Set([...s.cardsSeen, ...co.cards])],
     companiesWorked: s.companiesWorked.includes(co.id) ? s.companiesWorked : [...s.companiesWorked, co.id],
     yearsAtCompany: 0,
-    salary: offer.salary,
-    maxSalary: Math.max(s.maxSalary, offer.salary),
+    salary,
+    maxSalary: Math.max(s.maxSalary, salary),
     burnout: clamp(s.burnout - 15, 0, 100),
     scheduled: [],
   };
+}
+
+/** `{route}` 자리표시자를 현재 루트로 바꾼 회사 id */
+export const resolveCompanyId = (id: string, route: string): string => id.replace('{route}', route);
+
+/**
+ * 이벤트 효과로 회사를 옮긴다 (이직 이야기 없음, 그 회사 기본 연봉).
+ * 커리어 시작 전(프롤로그)이라면 첫 회사를 바꿔치기한다: 시작 회사에서 일한 적이 없으니 경력 목록을 새로 쓴다.
+ */
+export function moveToCompany(s: GameState, companyId: string, c: Content): GameState {
+  const co = c.companies[resolveCompanyId(companyId, s.route)];
+  if (!co) throw new Error(`unknown company ${companyId}`);
+  const moved = enterCompany(s, co, co.baseSalary);
+  return s.yearsInCareer === 0 ? { ...moved, companiesWorked: [co.id] } : moved;
+}
+
+export function joinCompany(s: GameState, offer: Offer, c: Content): GameState {
+  const co = c.companies[offer.companyId];
+  const next = enterCompany(s, co, offer.salary);
   if (offer.special === 'whatap-scout') {
     return applyEffects(next, { flags: ['whatap-joined'], traits: { 관측성전도사: 2 }, story: '와탭랩스의 스카우트 제안을 받아들였다.' });
   }
