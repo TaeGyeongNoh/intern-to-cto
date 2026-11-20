@@ -5,6 +5,7 @@ import { choiceChance, choiceLocked, pickEvent } from './events';
 import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES } from './incident';
 import { createRng } from './rng';
 import { review, runYear } from './season';
+import { buyItem, pickShopItems } from './shop';
 import { createInitialState, type Setup } from './state';
 import type { Content, GameState } from './types';
 
@@ -18,6 +19,8 @@ export type Pending =
   | { kind: 'incident-action'; incidentId: string; clues: number }
   | { kind: 'postmortem'; incidentId: string; resolved: boolean }
   | { kind: 'review' }
+  /** 연말 상점: pick i는 items[i]를 사고, pick items.length는 건너뛴다 */
+  | { kind: 'shop'; items: string[] }
   | { kind: 'offers'; offers: Offer[] }
   | { kind: 'ended' };
 
@@ -75,6 +78,8 @@ export function validInputs(g: Game, c: Content): Input[] {
       return c.incidents[p.incidentId].actions.map((_, i) => pick(i));
     case 'postmortem':
       return POSTMORTEM_CHOICES.map((_, i) => pick(i));
+    case 'shop':
+      return Array.from({ length: p.items.length + 1 }, (_, i) => pick(i));
     case 'offers':
       return Array.from({ length: p.offers.length + 1 }, (_, i) => pick(i));
     default:
@@ -180,6 +185,15 @@ export function apply(g: Game, input: Input, c: Content): Game {
       feed.push(POSTMORTEM_CHOICES[i]);
       break;
     }
+    case 'shop': {
+      const i = indexOf(input);
+      if (i < p.items.length) {
+        const r = buyItem(s, c.shop[p.items[i]], rng);
+        s = r.state;
+        feed.push(...r.feed);
+      } else feed.push('이번엔 지갑을 닫는다');
+      break;
+    }
     case 'offers': {
       const i = indexOf(input);
       if (i < p.offers.length) {
@@ -226,6 +240,8 @@ function drain(g: Game, c: Content): Game {
       const r = review(game.state, rng, c);
       const q: Pending[] = [];
       if (!r.state.retired) {
+        const items = pickShopItems(r.state, rng, c);
+        if (items.length > 0) q.push({ kind: 'shop', items });
         const offers = generateOffers(r.state, rng, c);
         if (offers.length > 0) q.push({ kind: 'offers', offers });
         q.push({ kind: 'year' });

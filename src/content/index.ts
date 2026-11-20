@@ -6,6 +6,7 @@ import { EVENTS } from './events';
 import { INCIDENTS } from './incidents';
 import { PROLOGUE_EVENTS } from './prologue';
 import { CARDS } from './cards';
+import { SHOP_ITEMS } from './shop';
 
 export const CONTENT: Content = {
   cards: CARDS,
@@ -13,4 +14,5 @@ export const CONTENT: Content = {
   events: toRecord([...PROLOGUE_EVENTS, ...EVENTS]),
   incidents: toRecord(INCIDENTS),
   endings: ENDINGS,
+  shop: toRecord(SHOP_ITEMS),
 };

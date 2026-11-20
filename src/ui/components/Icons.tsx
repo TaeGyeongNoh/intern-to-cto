@@ -54,6 +54,14 @@ import {
   Wallet as LWallet,
   Wrench as LWrench,
   X as LX,
+  Award as LAward,
+  Coins as LCoins,
+  GraduationCap as LGraduationCap,
+  KeyRound as LKeyRound,
+  Keyboard as LKeyboard,
+  PiggyBank as LPiggyBank,
+  Store as LStore,
+  TreePalm as LTreePalm,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react';
@@ -127,6 +135,14 @@ export const UserRoundX = make(LUserRoundX, 'UserRoundX');
 export const Wallet = make(LWallet, 'Wallet');
 export const Wrench = make(LWrench, 'Wrench');
 export const X = make(LX, 'X');
+export const Award = make(LAward, 'Award');
+export const Coins = make(LCoins, 'Coins');
+export const GraduationCap = make(LGraduationCap, 'GraduationCap');
+export const KeyRound = make(LKeyRound, 'KeyRound');
+export const Keyboard = make(LKeyboard, 'Keyboard');
+export const PiggyBank = make(LPiggyBank, 'PiggyBank');
+export const Store = make(LStore, 'Store');
+export const TreePalm = make(LTreePalm, 'TreePalm');
 
 export type IconTone = 'muted' | 'primary' | 'good' | 'warning' | 'critical' | 'inherit';
 

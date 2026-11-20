@@ -12,7 +12,8 @@ const LOG_MAX = 100;
 /** 한 번의 apply에서 나온 feed를 최신이 앞인 로그에 쌓는다 */
 const pushFeed = (log: string[], feed: readonly string[]) => [...[...feed].reverse(), ...log].slice(0, LOG_MAX);
 
-const firstLine = (g: Game) => g.state.record.story[0] ?? `${CONTENT.companies[g.state.companyId].name}에 입사했다.`;
+/** 기록 피드 첫 줄. 프롤로그 중에는 아직 입사 전이라 중립적인 문장을 쓴다 */
+const firstLine = (g: Game) => g.state.record.story[0] ?? (g.state.yearsInCareer === 0 ? '졸업을 앞둔 취준생' : `${CONTENT.companies[g.state.companyId].name}에서 일하는 중`);
 
 /** 저장 데이터를 리플레이하면서 기록 피드도 다시 만든다 (실패하면 throw) */
 function restoreWithLog(d: SaveData): { game: Game; log: string[] } {

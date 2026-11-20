@@ -118,7 +118,26 @@ export type Company = {
 
 export type CardDef = { id: CardId; name: string; color: string; views: ViewId[] };
 
-export type HistoryRow = { year: number; age: number; companyId: string; title: string; rating: number; ovr: number; salary: number };
+export type HistoryRow = { year: number; age: number; companyId: string; title: string; rating: number; ovr: number; salary: number; assets?: number };
+
+export type ShopCategory = 'gear' | 'growth' | 'rest' | 'life' | 'invest';
+export const SHOP_CATEGORY_LABELS: Record<ShopCategory, string> = {
+  gear: '장비', growth: '자기계발', rest: '휴식', life: '인생', invest: '투자',
+};
+export type ShopItem = {
+  id: string;
+  name: string;
+  category: ShopCategory;
+  /** 만원 */
+  price: number;
+  text: string;
+  when?: Condition;
+  /** 기본 true: 한 번 사면 다시 나오지 않는다 (`shop:{id}` 플래그) */
+  once?: boolean;
+  effects: Effects;
+  /** 투자: chance 확률로 price × win, 아니면 price × lose를 돌려받는다 */
+  gamble?: { chance: number; win: number; lose: number };
+};
 
 export type GameState = {
   name: string;
@@ -157,6 +176,10 @@ export type GameState = {
   };
   retired: boolean;
   endingId?: string;
+  /** 순자산 (만원) */
+  assets: number;
+  /** 상점에서 산 물건 id (산 순서대로, 중복 가능) */
+  purchases: string[];
 };
 
 export type Ending = { id: string; priority: number; title: string; description: string; check: (s: GameState) => boolean };
@@ -167,4 +190,5 @@ export type Content = {
   events: Record<string, GameEvent>;
   incidents: Record<string, Incident>;
   endings: Ending[];
+  shop: Record<string, ShopItem>;
 };

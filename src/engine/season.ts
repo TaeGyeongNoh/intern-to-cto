@@ -2,11 +2,14 @@ import { withJosa } from './josa';
 import type { Rng } from './rng';
 import { computeTitle, nextTitle, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
 import { reviewSalary } from './salary';
+import { SAVINGS_RATE } from './shop';
 import { ovr, POSITION_WEIGHTS } from './stats';
 import { STAT_IDS, type Content, type GameState, type GrowthType } from './types';
 import { clamp } from './util';
 
 export const RETIRE_AGE = 48;
+/** 순자산 몇 억 돌파 알림 단위 (만원) */
+const ASSET_MILESTONE = 10000;
 const DECLINE_AGE: Record<GrowthType, number> = { early: 35, normal: 38, late: 42 };
 const AGE_TABLE: Record<GrowthType, [number, number][]> = {
   early: [[25, 1.3], [29, 0.6], [33, 0.25]],
@@ -88,8 +91,11 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   const reputation = clamp(s.reputation + (rating - 3) * 3, 0, 100);
   const { title, kind } = nextTitle(s.title, computeTitle({ ...s, reputation }, o, company.tier));
   const salary = reviewSalary({ ...s, title }, rating, company);
-  const next: GameState = { ...s, reputation, salary, maxSalary: Math.max(s.maxSalary, salary) };
+  const assets = s.assets + Math.round(s.salary * SAVINGS_RATE);
+  const next: GameState = { ...s, reputation, salary, maxSalary: Math.max(s.maxSalary, salary), assets };
   const feed = [`연말 평가 ${rating}/5 · ${title} · 연봉 ${salary.toLocaleString('ko-KR')}만원`];
+  const eok = (v: number) => Math.floor(v / ASSET_MILESTONE);
+  if (eok(assets) > eok(s.assets) && assets > 0) feed.push(`순자산 ${eok(assets)}억 돌파`);
   const story = [...s.record.story];
   if (kind === 'promoted') {
     feed.push(`${withJosa(title, '(으)로')} 승진!`);
@@ -101,7 +107,7 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   let result: GameState = {
     ...next,
     title,
-    record: { ...s.record, story, history: [...s.record.history, { year: s.year, age: s.age, companyId: s.companyId, title, rating, ovr: o, salary }] },
+    record: { ...s.record, story, history: [...s.record.history, { year: s.year, age: s.age, companyId: s.companyId, title, rating, ovr: o, salary, assets }] },
   };
   if (s.burnout >= 100) {
     result = { ...result, retired: true, flags: result.flags.includes('burnout-out') ? result.flags : [...result.flags, 'burnout-out'] };

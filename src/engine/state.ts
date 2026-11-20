@@ -49,5 +49,7 @@ export function createInitialState(setup: Setup, seed: number, rng: Rng, c: Cont
     yearScore: 0,
     record: { incidentsTotal: 0, incidentsResolved: 0, mttrTotalMin: 0, history: [], story: [`${start.name}에 신입으로 입사했다.`] },
     retired: false,
+    assets: 0,
+    purchases: [],
   };
 }

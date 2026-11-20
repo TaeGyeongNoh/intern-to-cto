@@ -1,7 +1,7 @@
 import { josa } from '../../engine/josa';
 import type { CompanyRoute, Tier } from '../../engine/types';
 import {
-  Activity, Calendar, CircleCheck, CircleX, ClipboardList, CornerDownRight, FileText, Flag, House, Minus, Plane, Search, Sparkles, TrendingUp,
+  Activity, Calendar, CircleCheck, CircleX, ClipboardList, CornerDownRight, FileText, Flag, House, Minus, PiggyBank, Plane, Search, ShoppingCart, Sparkles, TrendingUp,
   type IconType,
 } from '../components/Icons';
 
@@ -41,6 +41,10 @@ export function feedIcon(line: string): { icon: IconType; tone: FeedTone } {
   if (/ — 성공$/.test(line)) return { icon: CornerDownRight, tone: 'good' };
   if (/ — 실패$/.test(line)) return { icon: CornerDownRight, tone: 'critical' };
   if (line.startsWith('연말 평가')) return { icon: ClipboardList, tone: 'muted' };
+  if (line.startsWith('구입 · ')) return { icon: ShoppingCart, tone: 'primary' };
+  if (/ — 성공 \(/.test(line)) return { icon: TrendingUp, tone: 'good' };
+  if (/ — 실패 \(/.test(line)) return { icon: TrendingUp, tone: 'critical' };
+  if (line.startsWith('순자산') || line.includes('지갑을 닫는다')) return { icon: PiggyBank, tone: 'muted' };
   if (line.includes('승진')) return { icon: TrendingUp, tone: 'good' };
   if (line.startsWith('복구 실패')) return { icon: CircleX, tone: 'critical' };
   if (line.startsWith('복구')) return { icon: CircleCheck, tone: 'good' };

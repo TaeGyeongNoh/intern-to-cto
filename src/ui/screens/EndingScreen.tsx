@@ -5,7 +5,7 @@ import type { Game } from '../../engine/game';
 import { ovr, POSITION_LABELS } from '../../engine/stats';
 import type { CardId } from '../../engine/types';
 import { Button, Chip } from '../components/Icon';
-import { Download, Link, Play, RotateCcw } from '../components/Icons';
+import { Award, Download, Link, Play, RotateCcw } from '../components/Icons';
 import { ENDING_ART } from '../art';
 import { shareUrl } from '../share';
 import { won } from './format';
@@ -13,6 +13,17 @@ import c from './common.module.css';
 import s from './EndingScreen.module.css';
 
 const ALL_CARDS = Object.keys(CARDS) as CardId[];
+
+/** 엔딩 카드에 남길 만한 상점 구매 (산 순서대로) */
+const PURCHASE_BADGES: Record<string, string> = {
+  house: '내 집 마련', jeonse: '전셋집 입주', ev: '전기차 오너', 'grad-school': '야간 대학원 졸업', jeju: '제주 한 달 살기', cat: '고양이 집사',
+};
+
+function purchaseBadges(purchases: readonly string[]): string[] {
+  const ids = [...new Set(purchases)].filter((id) => PURCHASE_BADGES[id]);
+  // 내 집을 마련했으면 전세 배지는 생략
+  return ids.filter((id) => !(id === 'jeonse' && ids.includes('house'))).map((id) => PURCHASE_BADGES[id]);
+}
 
 /** shared: 남이 공유한 커리어를 보는 읽기 전용 모드 (onRestart = "나도 해보기") */
 export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestart: () => void; shared?: boolean }) {
@@ -23,6 +34,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
   const years = r.history.length || st.yearsInCareer;
   const isWhatap = st.endingId === 'whatap';
   const art = st.endingId ? ENDING_ART[st.endingId] : undefined;
+  const badges = purchaseBadges(st.purchases);
   const { toast, show } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -90,11 +102,23 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
         <section className={`${c.card} ${s.stats}`}>
           <Stat label="커리어" value={`${years}년`} />
           <Stat label="최고 연봉" value={won(st.maxSalary)} />
+          <Stat label="순자산" value={won(st.assets)} />
           <Stat label="막아낸 장애" value={`${r.incidentsResolved}/${r.incidentsTotal}`} />
           <Stat label="평균 MTTR" value={r.incidentsTotal ? `${avgMttr}분` : '—'} />
           <Stat label="거쳐 간 회사" value={`${st.companiesWorked.length}곳`} />
           <Stat label="관측 도구" value={`${st.cardsSeen.length}/${ALL_CARDS.length}`} />
+          <Stat label="평판" value={`${st.reputation}`} />
+          <Stat label="지른 물건" value={`${st.purchases.length}개`} />
         </section>
+
+        {badges.length > 0 && (
+          <section className={c.card}>
+            <div className={c.label}>인생 업적</div>
+            <div className={s.badges}>
+              {badges.map((b) => <span key={b} className={s.badge}><Award size={14} />{b}</span>)}
+            </div>
+          </section>
+        )}
 
         <section className={c.card}>
           <div className={c.label}>경험한 관측 도구</div>

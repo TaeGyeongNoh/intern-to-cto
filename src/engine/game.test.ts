@@ -213,3 +213,40 @@ describe('이벤트로 은퇴', () => {
     expect(out!.state.record.history.length).toBe(state.record.history.length + 1);
   });
 });
+
+describe('상점', () => {
+  const atReview = (assets: number): Game => {
+    const state = makeState({ assets });
+    return { setup, seed: 1, rngState: 1, state, queue: [{ kind: 'event', eventId: 'x' }, { kind: 'review' }], log: [], feed: [] };
+  };
+  const evX: GameEvent = { id: 'x', when: {}, scheduledOnly: true, text: 'x', choices: [{ label: 'x', effects: {} }] };
+  const c: Content = { ...CONTENT, events: { ...CONTENT.events, x: evX } };
+
+  it('연말 평가 뒤, 살 수 있는 물건이 있으면 상점이 열린다 (이직 제안보다 먼저)', () => {
+    const g = apply(atReview(100_000), { t: 'pick', i: 0 }, c);
+    const p = pending(g);
+    expect(p.kind).toBe('shop');
+    if (p.kind !== 'shop') return;
+    expect(p.items.length).toBeGreaterThan(0);
+    expect(p.items.length).toBeLessThanOrEqual(3);
+    expect(validInputs(g, c)).toHaveLength(p.items.length + 1);
+  });
+  it('아무것도 못 사면 상점은 건너뛴다', () => {
+    const g = apply({ ...atReview(0), state: makeState({ assets: 0, salary: 0 }) }, { t: 'pick', i: 0 }, c);
+    expect(pending(g).kind).not.toBe('shop');
+  });
+  it('사면 돈이 빠지고 기록되며, 건너뛰면 그대로다', () => {
+    const g = apply(atReview(100_000), { t: 'pick', i: 0 }, c);
+    const p = pending(g);
+    if (p.kind !== 'shop') throw new Error('expected shop');
+    const item = c.shop[p.items[0]];
+    const bought = apply(g, { t: 'pick', i: 0 }, c);
+    expect(bought.state.purchases).toEqual([item.id]);
+    if (!item.gamble) expect(bought.state.assets).toBe(g.state.assets - item.price);
+    expect(bought.feed[0]).toContain(item.name);
+    const skipped = apply(g, { t: 'pick', i: p.items.length }, c);
+    expect(skipped.state.assets).toBe(g.state.assets);
+    expect(skipped.state.purchases).toEqual([]);
+    expect(pending(skipped).kind).not.toBe('shop');
+  });
+});

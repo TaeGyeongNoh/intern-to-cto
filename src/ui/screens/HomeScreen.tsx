@@ -6,7 +6,7 @@ import { ROLE_LABELS, roleFor } from '../../engine/roles';
 import { ovr, POSITION_LABELS } from '../../engine/stats';
 import { STAT_IDS, STAT_LABELS, type CardId, type Role } from '../../engine/types';
 import { Button, Chip, StatBar } from '../components/Icon';
-import { ArrowDown, ArrowUp, ChevronRight, EyeOff, Flame, IconText, Wallet } from '../components/Icons';
+import { ArrowDown, ArrowUp, ChevronRight, EyeOff, Flame, IconText, PiggyBank, Wallet } from '../components/Icons';
 import { feedIcon, TIER_LABELS, won } from './format';
 import { AVATARS } from '../art';
 import { Pill, RouteBadge } from './RouteBadge';
@@ -59,6 +59,7 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
             <div className={s.coLine}>
               <Pill tone={ROLE_TONE[role]}>{ROLE_LABELS[role]}</Pill>
               <IconText icon={Wallet} className={s.salary}>{won(st.salary)}</IconText>
+              <IconText icon={PiggyBank} className={s.salary}><span className={s.muted}>자산</span> {won(st.assets)}</IconText>
             </div>
           </div>
           <div className={s.ovrBox}>

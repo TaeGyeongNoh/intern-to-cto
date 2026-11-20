@@ -46,4 +46,19 @@ describe('validateContent', () => {
     };
     expect(validateContent(c)).toEqual([]);
   });
+  it('상점 물건: 가격, 효과, 없는 물건을 가리키는 조건, 잘못된 투자를 잡는다', () => {
+    const c: Content = {
+      ...CONTENT,
+      shop: {
+        a: { id: 'a', name: 'a', category: 'gear', price: 0, text: 'a', effects: { now: 'x' } },
+        b: { id: 'b', name: 'b', category: 'life', price: 10, text: 'b', when: { flags: ['shop:nope'] }, effects: {} },
+        c: { id: 'c', name: 'c', category: 'invest', price: 10, text: 'c', effects: {}, gamble: { chance: 1.5, win: 2, lose: 0 } },
+      },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('shop a: price must be positive');
+    expect(errs).toContain('shop a: now/company are only supported in event choices');
+    expect(errs).toContain('shop b: unknown shop flag shop:nope');
+    expect(errs).toContain('shop c: invalid gamble');
+  });
 });

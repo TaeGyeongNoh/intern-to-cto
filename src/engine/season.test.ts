@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { withJosa } from './josa';
 import { CONTENT } from '../content';
+import { withJosa } from './josa';
 import { createRng } from './rng';
 import { ageFactor, RETIRE_AGE, review, runYear } from './season';
 import { makeState } from './testing';
@@ -41,6 +41,15 @@ describe('runYear', () => {
 });
 
 describe('review', () => {
+  it('그 해 연봉의 25%를 저축하고 히스토리에 순자산을 남긴다', () => {
+    const r = review(makeState({ salary: 8000, assets: 1000 }), createRng(5), CONTENT);
+    expect(r.state.assets).toBe(3000);
+    expect(r.state.record.history[0].assets).toBe(3000);
+  });
+  it('순자산이 억 단위를 넘을 때만 알린다', () => {
+    expect(review(makeState({ salary: 8000, assets: 9000 }), createRng(5), CONTENT).feed).toContain('순자산 1억 돌파');
+    expect(review(makeState({ salary: 8000, assets: 1000 }), createRng(5), CONTENT).feed.join('\n')).not.toContain('돌파');
+  });
   it('히스토리를 한 줄 남기고 별점 1~5', () => {
     const r = review(makeState(), createRng(5), CONTENT).state;
     expect(r.record.history).toHaveLength(1);

@@ -12,6 +12,12 @@ export type SimReport = {
   /** 만원. 커리어 10년차 연말 연봉 중앙값 (10년 이상 플레이한 판만) */
   salaryYear10Median: number;
   maxSalary: { median: number; p90: number; max: number };
+  /** 만원. 은퇴 시점 순자산 */
+  assets: { median: number; p90: number };
+  /** 내 집 마련(house)을 산 판의 비율 */
+  houseRate: number;
+  /** 판당 평균 상점 구매 수 */
+  avgPurchases: number;
 };
 
 const quantile = (xs: number[], q: number): number => {
@@ -31,6 +37,9 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
   const agg = { noClue: [0, 0], withClues: [0, 0] };
   const year10: number[] = [];
   const maxSalaries: number[] = [];
+  const assets: number[] = [];
+  let houses = 0;
+  let purchases = 0;
 
   for (let k = 0; k < n; k++) {
     const seed = seed0 + k;
@@ -59,6 +68,9 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
     const row10 = g.state.record.history[9];
     if (row10) year10.push(row10.salary);
     maxSalaries.push(g.state.maxSalary);
+    assets.push(g.state.assets);
+    if (g.state.purchases.includes('house')) houses++;
+    purchases += g.state.purchases.length;
   }
 
   const rate = ([ok, total]: number[]) => (total ? ok / total : 0);
@@ -71,5 +83,8 @@ export function simulate(n: number, c: Content, seed0 = 1): SimReport {
     resolveRate: { noClue: rate(agg.noClue), withClues: rate(agg.withClues) },
     salaryYear10Median: quantile(year10, 0.5),
     maxSalary: { median: quantile(maxSalaries, 0.5), p90: quantile(maxSalaries, 0.9), max: quantile(maxSalaries, 1) },
+    assets: { median: quantile(assets, 0.5), p90: quantile(assets, 0.9) },
+    houseRate: houses / n,
+    avgPurchases: purchases / n,
   };
 }

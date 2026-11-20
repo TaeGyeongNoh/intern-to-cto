@@ -1,5 +1,6 @@
 import { resolveCompanyId } from './career';
 import { PROLOGUE_START } from './game';
+import { shopFlag } from './shop';
 import { ROUTE_IDS, type Content, type Effects } from './types';
 
 export function validateContent(c: Content): string[] {
@@ -59,6 +60,18 @@ export function validateContent(c: Content): string[] {
   for (const co of Object.values(c.companies))
     for (const card of co.cards) if (!cardIds.has(card)) errs.push(`company ${co.id}: unknown card ${card}`);
   if (!c.companies.whatap) errs.push('missing whatap company');
+
+  const shopFlags = new Set(Object.keys(c.shop).map(shopFlag));
+  for (const [key, item] of Object.entries(c.shop)) {
+    const where = `shop ${item.id}`;
+    if (key !== item.id) errs.push(`shop key ${key} != id ${item.id}`);
+    if (!(item.price > 0)) errs.push(`${where}: price must be positive`);
+    checkEffects(where, item.effects);
+    if (item.effects.next || item.effects.retire) errs.push(`${where}: next/retire are not supported in shop items`);
+    for (const f of item.when?.flags ?? []) if (f.startsWith('shop:') && !shopFlags.has(f)) errs.push(`${where}: unknown shop flag ${f}`);
+    const g = item.gamble;
+    if (g && (g.chance <= 0 || g.chance >= 1 || g.win < 0 || g.lose < 0)) errs.push(`${where}: invalid gamble`);
+  }
 
   const ids = new Set<string>();
   for (const e of c.endings) {
