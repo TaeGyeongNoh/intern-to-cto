@@ -149,4 +149,142 @@ const AI_CHATBOT_ARC: GameEvent[] = [
   },
 ];
 
-export const EVENTS: GameEvent[] = [...GENERAL, ...AI_CHATBOT_ARC];
+const BLACKFRIDAY_ARC: GameEvent[] = [
+  {
+    id: 'blackfriday-1',
+    arc: 'blackfriday',
+    when: { route: ['commerce'], minCareerYear: 2 },
+    weight: 2,
+    text: '블랙프라이데이 D-30. 대표가 전사 회의에서 선언했다. "올해 목표는 작년 트래픽의 다섯 배!" 작년엔 두 배에서 터졌다.',
+    choices: [
+      { label: '부하 테스트와 대시보드부터 준비한다', chance: { base: 0.45, stat: 'infra', card: 'apm' }, effects: { stats: { infra: 2 }, flags: ['bf-ready'], now: 'blackfriday-2', story: '블프 한 달 전부터 부하 테스트를 돌렸다.' }, failEffects: { burnout: 6, now: 'blackfriday-2' } },
+      { label: '브라우저 모니터링을 미리 깔아 둔다', chance: { base: 0.5, stat: 'design' }, effects: { addCards: ['browser'], traits: { 관측성전도사: 1 }, now: 'blackfriday-2' }, failEffects: { reputation: -1, now: 'blackfriday-2' } },
+      { label: '서버만 두 배로 늘려 둔다', effects: { now: 'blackfriday-2' } },
+      { label: '블프는 마케팅팀 행사다', effects: { burnout: -3 } },
+    ],
+  },
+  {
+    id: 'blackfriday-2',
+    arc: 'blackfriday',
+    scheduledOnly: true,
+    when: {},
+    text: '블프 당일 0시 0분. 트래픽이 일곱 배로 치솟고, "결제 페이지가 하얘요" 제보가 쏟아진다. 마케팅팀은 이미 샴페인을 땄다.',
+    choices: [
+      { label: 'APM 히트맵으로 병목을 찾는다', requires: { card: 'apm' }, effects: { reputation: 6, stats: { debug: 2 }, traits: { 관측성전도사: 1 }, next: 'blackfriday-3a', story: '블프 자정, 히트맵에서 병목을 찾아 10분 만에 결제를 살렸다.' } },
+      { label: '브라우저 에러로 프론트를 의심한다', requires: { card: 'browser' }, effects: { reputation: 5, stats: { debug: 1, impl: 1 }, traits: { 관측성전도사: 1 }, next: 'blackfriday-3a', story: '블프 자정, 브라우저 에러 화면에서 결제 스크립트 오류를 바로 잡았다.' } },
+      { label: '감으로 서버를 계속 늘린다', chance: { base: 0.3, stat: 'infra' }, effects: { burnout: 8, next: 'blackfriday-3a' }, failEffects: { reputation: -5, burnout: 12, next: 'blackfriday-3b', story: '블프 당일 결제가 두 시간 멈췄다. 서버는 끝까지 한가했다.' } },
+    ],
+  },
+  {
+    id: 'blackfriday-3a',
+    arc: 'blackfriday',
+    scheduledOnly: true,
+    when: {},
+    text: '작년 블프가 매출 신기록으로 끝났다. 올해 블프 준비 TF의 리드 자리가 네 앞에 놓였다.',
+    choices: [
+      { label: '리드를 맡고 성과급도 챙긴다', effects: { salary: 400, reputation: 3, burnout: 6, story: '블프 성과로 성과급을 받고 블프 TF 리드가 됐다.' } },
+      { label: '작년 대응을 문서로 남겨 공유한다', effects: { reputation: 4, traits: { 문화: 1 }, stats: { design: 1 } } },
+    ],
+  },
+  {
+    id: 'blackfriday-3b',
+    arc: 'blackfriday',
+    scheduledOnly: true,
+    when: {},
+    text: '작년 블프 장애는 "결제 대란"이라는 이름으로 아직도 회자된다. 올해도 블프는 온다.',
+    choices: [
+      { label: '관측성부터 제대로 갖추자고 설득한다', chance: { base: 0.5, stat: 'design' }, effects: { addCards: ['apm'], traits: { 관측성전도사: 1 }, reputation: 3, story: '결제 대란 이후 APM 도입을 밀어붙였다.' }, failEffects: { burnout: 6 } },
+      { label: '올해 블프에는 휴가를 낸다', effects: { burnout: -10, reputation: -3 } },
+    ],
+  },
+];
+
+const MIGRATION_ARC: GameEvent[] = [
+  {
+    id: 'migration-1',
+    arc: 'migration',
+    when: { route: ['finance'], minCareerYear: 3 },
+    weight: 2,
+    text: '드디어 클라우드 이전이 결재됐다. 도장 열일곱 개, 반려 세 번, 기간 2년. 이관 TF를 꾸린다고 한다.',
+    choices: [
+      { label: '이관 TF에 자원한다', effects: { stats: { infra: 2 }, burnout: 4, next: 'migration-2', story: '클라우드 이전 TF에 들어갔다.' } },
+      { label: '관측 도구부터 깔고 옮기자고 한다', chance: { base: 0.45, stat: 'design' }, effects: { addCards: ['apm'], traits: { 관측성전도사: 1 }, next: 'migration-2', story: '이관 전에 APM부터 깔자고 설득했다.' }, failEffects: { reputation: -1, next: 'migration-2' } },
+      { label: '결재 라인에서 조용히 빠진다', effects: {} },
+    ],
+  },
+  {
+    id: 'migration-2',
+    arc: 'migration',
+    scheduledOnly: true,
+    when: {},
+    text: '이관 D-day, 일요일 새벽 4시. 전환은 끝났는데 계좌 조회가 열 번에 한 번씩 실패한다. 월요일 9시까지 다섯 시간.',
+    choices: [
+      { label: 'DB 락/세션부터 본다', requires: { card: 'db' }, effects: { reputation: 5, stats: { debug: 2 }, traits: { 관측성전도사: 1 }, next: 'migration-3a', story: '이관 당일 새벽, 커넥션 풀 설정 누락을 찾아 9시 전에 고쳤다.' } },
+      { label: '트레이스로 구간을 쪼갠다', requires: { card: 'apm' }, effects: { reputation: 5, stats: { debug: 1, infra: 1 }, traits: { 관측성전도사: 1 }, next: 'migration-3a', story: '이관 당일 새벽, 트레이스로 느린 구간을 찾아 9시 전에 고쳤다.' } },
+      { label: '전 서버 로그를 grep한다', chance: { base: 0.3, stat: 'debug' }, effects: { burnout: 10, next: 'migration-3a' }, failEffects: { burnout: 12, next: 'migration-3b' } },
+      { label: '롤백을 외친다', effects: { reputation: -2, next: 'migration-3b', story: '이관 당일 롤백했다. 2년짜리 프로젝트가 1년 더 늘었다.' } },
+    ],
+  },
+  {
+    id: 'migration-3a',
+    arc: 'migration',
+    scheduledOnly: true,
+    when: {},
+    text: '감사 시즌. 감사관이 묻는다. "작년 이관 당일 새벽 4시에서 9시 사이, 정확히 무슨 일이 있었습니까?"',
+    choices: [
+      { label: '그날의 기록을 그대로 보여 준다', effects: { reputation: 6, story: '클라우드 이전 감사를 기록 한 장으로 통과했다.' } },
+      { label: '보고서를 직접 다시 쓴다', effects: { stats: { design: 2 }, reputation: 3, burnout: 5 } },
+    ],
+  },
+  {
+    id: 'migration-3b',
+    arc: 'migration',
+    scheduledOnly: true,
+    when: {},
+    text: '감사 시즌. "이관 당일 무슨 일이 있었는지" 묻는데, 남은 건 단톡방 캡처와 흐릿한 기억뿐이다.',
+    choices: [
+      { label: '엑셀로 타임라인을 재구성한다', chance: { base: 0.4, stat: 'mental' }, effects: { reputation: 2, burnout: 8 }, failEffects: { reputation: -5, burnout: 10, story: '감사 지적 사항에 이름이 올랐다.' } },
+      { label: '다음엔 기록부터 남기자고 제안한다', chance: { base: 0.5, stat: 'design' }, effects: { addCards: ['db'], traits: { 관측성전도사: 1 } }, failEffects: { reputation: -2 } },
+    ],
+  },
+];
+
+const MSA_ARC: GameEvent[] = [
+  {
+    id: 'msa-1',
+    arc: 'msa',
+    when: { minCareerYear: 6, minOvr: 55 },
+    weight: 1.5,
+    text: '새로 온 아키텍트가 화이트보드에 선언했다. "이 모놀리스, 마이크로서비스로 쪼갭시다." 화이트보드에는 이미 동그라미가 마흔 개다.',
+    choices: [
+      { label: '도메인 경계부터 같이 설계한다', chance: { base: 0.45, stat: 'design' }, effects: { stats: { design: 3 }, flags: ['msa-planned'], next: 'msa-2' }, failEffects: { burnout: 5, next: 'msa-2' } },
+      { label: '일단 마흔 개로 쪼갠다', effects: { stats: { impl: 2 }, burnout: 4, next: 'msa-2', story: '모놀리스를 서비스 마흔 개로 쪼갰다.' } },
+      { label: '잘 만든 모놀리스를 변호한다', chance: { base: 0.4, stat: 'design' }, effects: { reputation: 3, story: '모놀리스를 지켜 냈다. 배포는 여전히 한 번에 된다.' }, failEffects: { reputation: -2 } },
+    ],
+  },
+  {
+    id: 'msa-2',
+    arc: 'msa',
+    scheduledOnly: true,
+    when: {},
+    text: '쪼갠 지 1년. 추천 서비스 하나가 느려지자 장바구니, 주문, 알림까지 줄줄이 타임아웃이 난다. 누가 누구를 부르는지 아는 사람이 없다.',
+    choices: [
+      { label: '토폴로지로 호출 관계를 본다', requires: { card: 'apm' }, effects: { reputation: 6, stats: { debug: 2 }, traits: { 관측성전도사: 1 }, next: 'msa-3', story: '토폴로지 한 장으로 연쇄 장애의 시작점을 찾았다.' } },
+      { label: '파드 상태부터 훑는다', requires: { card: 'k8s' }, effects: { reputation: 3, stats: { infra: 2 }, next: 'msa-3' } },
+      { label: '서비스마다 들어가 grep한다', chance: { base: 0.3, stat: 'debug' }, effects: { reputation: 2, burnout: 8, next: 'msa-3' }, failEffects: { reputation: -4, burnout: 12, next: 'msa-3', story: '연쇄 장애를 grep으로 쫓다 아침을 맞았다.' } },
+    ],
+  },
+  {
+    id: 'msa-3',
+    arc: 'msa',
+    scheduledOnly: true,
+    when: {},
+    text: '연쇄 장애 회고. 화이트보드의 동그라미 마흔 개를 이제 정리할 때다.',
+    choices: [
+      { label: '토폴로지를 기준으로 서비스를 다시 묶는다', chance: { base: 0.45, stat: 'design', card: 'apm' }, effects: { stats: { design: 3 }, reputation: 4, story: '서비스 마흔 개를 열두 개로 다시 묶었다. 호출 그래프가 처음으로 한 화면에 들어왔다.' }, failEffects: { burnout: 8, reputation: -1 } },
+      { label: '서킷 브레이커와 타임아웃 규칙을 만든다', effects: { stats: { infra: 2, design: 1 }, traits: { 문화: 1 } } },
+    ],
+  },
+];
+
+export const EVENTS: GameEvent[] = [...GENERAL, ...AI_CHATBOT_ARC, ...BLACKFRIDAY_ARC, ...MIGRATION_ARC, ...MSA_ARC];

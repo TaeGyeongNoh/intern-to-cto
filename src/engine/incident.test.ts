@@ -46,7 +46,7 @@ describe('pickIncidents', () => {
       const rest = ids.slice(1);
       expect(rest.length).toBeLessThanOrEqual(2);
       expect(new Set(rest).size).toBe(rest.length);
-      for (const id of rest) expect(['payment-latency', 'oom-kill']).toContain(id);
+      for (const id of rest) expect(['payment-latency', 'oom-kill', 'slow-query']).toContain(id);
     }
   });
 });
@@ -59,13 +59,25 @@ describe('pickIncidents 재발', () => {
 });
 
 describe('장애 콘텐츠', () => {
-  it('5종이 있고 모든 단계에 정답과 grep 선택지가 있다', () => {
+  it('9종이 있고 모든 단계에 정답과 grep 선택지가 있다', () => {
     const list = Object.values(CONTENT.incidents);
-    expect(list).toHaveLength(5);
+    expect(list).toHaveLength(9);
     for (const inc of list)
       for (const st of inc.steps) {
         expect(st.options.some((o) => o.correct)).toBe(true);
         expect(st.options.some((o) => o.view === 'grep')).toBe(true);
       }
+  });
+});
+
+describe('장애 구조', () => {
+  it('모든 장애는 3단계, 행동 2개, 첫 행동은 단서형(0.25 + 0.22/단서), AI 힌트가 있다', () => {
+    for (const inc of Object.values(CONTENT.incidents)) {
+      expect(inc.steps, inc.id).toHaveLength(3);
+      expect(inc.actions, inc.id).toHaveLength(2);
+      expect(inc.actions[0].baseChance, inc.id).toBe(0.25);
+      expect(inc.actions[0].perClue, inc.id).toBe(0.22);
+      expect(inc.aiHint, inc.id).toBeTruthy();
+    }
   });
 });
