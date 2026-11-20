@@ -9,7 +9,8 @@ import type { Content } from '../engine/types';
 export const SHARE_PARAM = 'r';
 const VERSION = '1';
 const ASK = '_';
-const MAX_NAME = 40;
+/** 생성 화면 이름 입력(maxLength=10)과 같은 기준 — UTF-16 코드 유닛 수 */
+const MAX_NAME = 10;
 
 export type SharedRun = { setup: Setup; seed: number; log: Input[] };
 

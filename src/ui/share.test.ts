@@ -40,6 +40,14 @@ describe('share link', () => {
     expect(() => encodeShare({ setup: { name: 'a', position: 'sre', route: 'finance', candidate: 1 }, seed: 5, log: [{ t: 'pick', i: 36 }] })).toThrow();
   });
 
+  it('이름은 생성 화면 입력과 같은 10자(UTF-16) 제한', () => {
+    const run = (name: string) => decodeShare(encodeShare({ setup: { name, position: 'sre', route: 'finance', candidate: 1 }, seed: 5, log: [] }));
+    expect(run('가나다라마바사아자차')?.setup.name).toBe('가나다라마바사아자차');
+    expect(run('🚀🚀🚀🚀🚀')?.setup.name).toBe('🚀🚀🚀🚀🚀'); // 이모지 하나 = 2 유닛
+    expect(run('가나다라마바사아자차카')).toBeNull();
+    expect(run('🚀🚀🚀🚀🚀a')).toBeNull();
+  });
+
   it('깨진 입력은 null', () => {
     const good = encodeShare(playRandom(3));
     const [, head, log] = good.split('.');
