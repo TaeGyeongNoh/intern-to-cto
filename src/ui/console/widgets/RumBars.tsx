@@ -1,13 +1,15 @@
 import { num, rngFor } from './fake';
+import { flavorOf } from './flavor';
 import { Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
-const PAGES = ['/', '/products', '/products/:id', '/cart', '/checkout', '/mypage'];
 
 export function RumBars(p: WidgetProps) {
   const r = rngFor(p.k, 'rum');
-  const hotPage = p.anomaly ? r.pick(['/checkout', '/checkout', '/cart', '/products/:id']) : '';
-  const rows = PAGES.map((page) => ({
+  const fl = flavorOf(p.k).rum;
+  const rolled = r.pick(fl.hot);
+  const hotPage = p.anomaly ? rolled : '';
+  const rows = fl.pages.map((page) => ({
     page,
     errors: page === hotPage ? r.int(1200, 2600) : r.int(2, 38),
     hot: page === hotPage,
@@ -16,7 +18,7 @@ export function RumBars(p: WidgetProps) {
   const total = rows.reduce((a, b) => a + b.errors, 0);
   const users = Math.round(total * (0.55 + r.next() * 0.2));
   return (
-    <Panel {...p} title="페이지별 JS 에러" sub={`브라우저 · 최근 30분 · 영향 사용자 ${num(users)}명`}>
+    <Panel {...p} title="페이지별 JS 에러" sub={`브라우저 · 최근 30분 · 영향 사용자 ${num(users)}명${p.anomaly && fl.note ? ` · ${fl.note}` : ''}`}>
       <ul className={s.hbars}>
         {rows.map((row) => (
           <li key={row.page} className={row.hot ? s.hbarHot : undefined}>

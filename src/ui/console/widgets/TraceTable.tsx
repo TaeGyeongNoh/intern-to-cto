@@ -1,30 +1,20 @@
 import { clockMs, nowSec, num, rngFor } from './fake';
+import { flavorOf, type StepType } from './flavor';
 import { Panel, type WidgetProps } from './Panel';
 import { TriangleAlert } from '../../components/Icons';
 import s from './widgets.module.css';
 
-type StepType = 'method' | 'sql' | 'httpc' | 'dbc';
 type Step = { type: StepType; text: string; start: number; gap: number; elapsed: number; slow: boolean };
-
-const TEXTS: Record<StepType, string[]> = {
-  method: ['OrderController.checkout()', 'OrderService.place()', 'CouponService.apply()', 'CartService.load()', 'PaymentFacade.approve()'],
-  dbc: ['jdbc:mysql://order-db:3306/shop', 'jdbc:mysql://order-db-ro:3306/shop'],
-  sql: [
-    'SELECT * FROM cart_item WHERE user_id = ?',
-    'SELECT price, stock FROM product WHERE id IN (?)',
-    'UPDATE inventory SET qty = qty - ? WHERE sku = ?',
-    'INSERT INTO orders (user_id, amount) VALUES (?, ?)',
-  ],
-  httpc: ['POST http://pg-gateway/v1/approve', 'GET http://coupon-api/v2/coupons/{id}', 'POST http://notify-api/push'],
-};
 
 const ORDER: StepType[] = ['method', 'method', 'dbc', 'sql', 'sql', 'httpc', 'method', 'sql', 'httpc', 'sql'];
 
 function build(k: string, anomaly: boolean): Step[] {
   const r = rngFor(k, 'trace');
+  const { texts, slow: slowStep } = flavorOf(k).trace;
   const n = 8 + r.int(0, 2);
   const types = ORDER.slice(0, n);
-  const candidates = types.map((t, i) => (t === 'httpc' || t === 'sql' ? i : -1)).filter((i) => i >= 2);
+  // 이 장애에서 느려지는 스텝 종류(외부 호출/SQL/메서드) 자리 중 하나에 경고를 단다
+  const candidates = types.map((t, i) => (t === slowStep.type ? i : -1)).filter((i) => i >= 2);
   const slowIdx = anomaly ? r.pick(candidates) : -1;
   let t = nowSec(k) * 1000 - r.int(2000, 9000);
   const out: Step[] = [];
@@ -34,8 +24,9 @@ function build(k: string, anomaly: boolean): Step[] {
     t += gap;
     const slow = i === slowIdx;
     const base = type === 'httpc' ? r.int(18, 140) : type === 'sql' ? r.int(1, 28) : type === 'dbc' ? r.int(0, 4) : r.int(0, 2);
-    const elapsed = slow ? r.int(3200, 8400) : base;
-    out.push({ type, text: r.pick(TEXTS[type]), start: t, gap, elapsed, slow });
+    const elapsed = slow ? r.int(slowStep.ms[0], slowStep.ms[1]) : base;
+    const text = r.pick(texts[type]);
+    out.push({ type, text: slow ? slowStep.text : text, start: t, gap, elapsed, slow });
     t += elapsed;
   }
   return out;
@@ -45,10 +36,11 @@ const TAG: Record<StepType, string> = { method: 'METHOD', sql: 'SQL', httpc: 'HT
 
 export function TraceTable(p: WidgetProps) {
   const steps = build(p.k, p.anomaly);
+  const { endpoint } = flavorOf(p.k).trace;
   const t0 = steps[0].start;
   const total = steps[steps.length - 1].start + steps[steps.length - 1].elapsed - t0;
   return (
-    <Panel {...p} title="트랜잭션 프로파일" sub={`POST /api/order/checkout · 경과 ${num(total)}ms`}>
+    <Panel {...p} title="트랜잭션 프로파일" sub={`${endpoint} · 경과 ${num(total)}ms`}>
       <div className={s.tableWrap}>
         <table className={`${s.table} ${s.trace}`}>
           <colgroup>

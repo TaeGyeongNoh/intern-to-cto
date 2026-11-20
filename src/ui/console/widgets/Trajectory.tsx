@@ -1,5 +1,6 @@
 import { hashKey } from '../data';
 import { num, rngFor } from './fake';
+import { flavorOf } from './flavor';
 import { Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
@@ -21,11 +22,8 @@ const yOf = (i: number) => TOP + i * ROW;
 
 function build(k: string, anomaly: boolean): { steps: Step[]; loopFrom: number; loopTo: number; tokens: number } {
   const r = rngFor(k, 'traj');
-  const team = r.pick([
-    { lead: 'cs-supervisor', sub: 'order-agent', tool: 'search_orders' },
-    { lead: 'shop-assistant', sub: 'refund-agent', tool: 'get_refund_status' },
-    { lead: 'ops-copilot', sub: 'runbook-agent', tool: 'query_metrics' },
-  ]);
+  const fl = flavorOf(k).agents;
+  const team = r.pick(fl.teams);
   const ms = (a: number, b: number) => `${(r.int(a, b) / 1000).toFixed(1)}s`;
   const tok = (a: number, b: number) => `${num(r.int(a, b))} tok`;
   const head: Step[] = [
@@ -41,6 +39,19 @@ function build(k: string, anomaly: boolean): { steps: Step[]; loopFrom: number; 
       { depth: 1, kind: 'tool', label: 'policy_check()', meta: ms(30, 90) },
       { depth: 1, kind: 'llm', label: 'LLM · 최종 답변', meta: tok(600, 1400) },
       { depth: 0, kind: 'end', label: '응답 완료', meta: ms(3200, 5800) },
+    ];
+    return { steps, loopFrom: -1, loopTo: -1, tokens: r.int(4200, 7800) };
+  }
+  if (fl.broken) {
+    // 루프가 아니라 한 갈래가 틀어진 채로 끝까지 가 버리는 그림 (빈 검색 결과, 문서 속 지시 등)
+    const b = fl.broken;
+    const steps: Step[] = [
+      ...head.slice(0, 3),
+      { depth: 2, kind: 'tool', label: b.tool, meta: b.toolMeta, bad: true },
+      { depth: 2, kind: 'llm', label: b.llm, meta: tok(900, 1800), bad: true },
+      ...(b.next ? [{ depth: 2, kind: 'tool' as const, label: b.next, meta: ms(120, 600), bad: true }] : []),
+      { depth: 1, kind: 'llm', label: 'LLM · 최종 답변', meta: tok(600, 1400) },
+      { depth: 0, kind: 'end', label: b.end, meta: ms(3200, 5800), bad: true },
     ];
     return { steps, loopFrom: -1, loopTo: -1, tokens: r.int(4200, 7800) };
   }
@@ -61,7 +72,7 @@ export function Trajectory(p: WidgetProps) {
   const uid = `tj${hashKey(p.k).toString(36)}`;
   const loopX = xOf(2) - R - 3;
   return (
-    <Panel {...p} title="에이전트 실행 경로" sub={`트래젝토리 · 스텝 ${p.anomaly ? '120+' : steps.length} · ${num(tokens)} tok`}>
+    <Panel {...p} title="에이전트 실행 경로" sub={`트래젝토리 · 스텝 ${loopFrom >= 0 ? '120+' : steps.length} · ${num(tokens)} tok`}>
       <div className={s.legend}>
         <span><i style={{ background: COLOR.agent, borderRadius: 999 }} />에이전트</span>
         <span><i style={{ background: COLOR.llm, borderRadius: 999 }} />LLM</span>

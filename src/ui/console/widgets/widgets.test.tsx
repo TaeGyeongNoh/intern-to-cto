@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { ViewId } from '../../../engine/types';
+import { FLAVOR_IDS, flavorOf, incidentOf } from './flavor';
 import { WIDGETS } from './index';
 
 const VIEWS = Object.keys(WIDGETS) as ViewId[];
@@ -36,5 +37,62 @@ describe('console widgets', () => {
     expect(renderToString(<WIDGETS.pods k="t" anomaly={false} />)).not.toContain('OOMKilled');
     expect(renderToString(<Traj k="t" anomaly={true} />)).toContain('×40');
     expect(renderToString(<Locks k="t" anomaly={true} />)).toContain('락 보유');
+  });
+
+  describe('장애별 flavor', () => {
+    const render = (incident: string, view: ViewId, anomaly = true) => {
+      const W = WIDGETS[view];
+      return renderToString(<W k={`${incident}:${view}`} anomaly={anomaly} />);
+    };
+    const qualityBad = (html: string) => html.match(/>([A-Za-z_]+)<\/span><span[^>]*>위험</)?.[1];
+
+    it('키에서 장애 id를 읽고, 모르는 장애는 일반 flavor', () => {
+      expect(incidentOf('db-lock:trace')).toBe('db-lock');
+      expect(flavorOf('nope:trace')).toBe(flavorOf('t'));
+      expect(flavorOf('db-lock:trace')).not.toBe(flavorOf('t'));
+      for (const id of ['payment-latency', 'db-lock', 'oom-kill', 'token-bomb', 'hallucination', 'frontend-js-error', 'gpu-oom', 'slow-query', 'prompt-injection']) {
+        expect(FLAVOR_IDS, id).toContain(id);
+      }
+    });
+
+    it('PG 호출은 결제 장애 트레이스에만 나온다', () => {
+      expect(render('payment-latency', 'trace')).toContain('pg-gateway');
+      expect(render('payment-latency', 'topology')).toContain('외부 PG');
+      for (const id of ['db-lock', 'oom-kill', 'token-bomb', 'hallucination', 'gpu-oom', 'slow-query', 'prompt-injection', 'unknown']) {
+        for (const view of VIEWS) {
+          for (const anomaly of [true, false]) expect(render(id, view, anomaly), `${id}:${view}`).not.toContain('pg-gateway');
+        }
+      }
+    });
+
+    it('위젯 내용이 단서와 맞는다', () => {
+      expect(render('db-lock', 'trace')).toContain('UPDATE orders');
+      expect(render('db-lock', 'db-locks')).toContain('settlement-batch');
+      expect(render('db-lock', 'log-search')).toContain('settlement-batch schedule changed');
+      expect(render('oom-kill', 'pods')).toMatch(/\/(<!-- -->)?512(<!-- -->)?Mi/);
+      expect(render('oom-kill', 'trace')).toContain('ExcelExportService');
+      expect(render('slow-query', 'trace')).toContain('transaction_history');
+      expect(render('slow-query', 'db-locks')).toContain('풀스캔');
+      expect(render('slow-query', 'log-search')).toContain('DROP INDEX');
+      expect(render('token-bomb', 'token-cost')).toMatch(/hbarHot[^"]*"><span[^>]*>search-agent</);
+      expect(render('token-bomb', 'agent-trajectory')).toContain('web_search()');
+      expect(render('token-bomb', 'agent-trajectory')).toContain('×40');
+      expect(render('hallucination', 'agent-trajectory')).toContain('0 docs');
+      expect(render('hallucination', 'agent-trajectory')).not.toContain('×40');
+      expect(render('hallucination', 'trace')).toContain('vector-db');
+      expect(render('prompt-injection', 'agent-trajectory')).toContain('admin_export_config()');
+      expect(render('frontend-js-error', 'rum')).toMatch(/hbarHot[^"]*"><span[^>]*>\/checkout</);
+      expect(render('gpu-oom', 'pods')).toContain('vllm-server');
+      for (const [id, metric] of [['hallucination', 'hallucination'], ['prompt-injection', 'prompt_injection'], ['token-bomb', 'relevance']]) {
+        expect(qualityBad(render(id, 'llm-quality')), id).toBe(metric);
+      }
+    });
+
+    it.each(FLAVOR_IDS)('%s: 모든 위젯이 결정적으로 그려진다', (id) => {
+      for (const view of VIEWS) {
+        expect(render(id, view)).toBe(render(id, view));
+        expect(render(id, view, false)).not.toContain('data-testid="clue-marker"');
+      }
+    });
   });
 });

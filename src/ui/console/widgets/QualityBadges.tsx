@@ -1,4 +1,5 @@
 import { num, rngFor } from './fake';
+import { flavorOf } from './flavor';
 import { Badge, Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
@@ -15,8 +16,10 @@ const METRICS: Metric[] = [
 
 export function QualityBadges(p: WidgetProps) {
   const r = rngFor(p.k, 'quality');
-  // 대부분은 hallucination, 가끔 다른 지표가 터진다
-  const badId = p.anomaly ? (r.chance(0.6) ? 'hallucination' : r.pick(METRICS.slice(1)).id) : '';
+  // 장애가 정해 둔 지표가 터진다. 모르는 장애면 대부분 hallucination, 가끔 다른 지표
+  const fixed = flavorOf(p.k).quality;
+  const roll = r.chance(0.6) ? 'hallucination' : r.pick(METRICS.slice(1)).id;
+  const badId = p.anomaly ? fixed ?? roll : '';
   const evals = r.int(800, 2400);
   const items = METRICS.map((m) => {
     const bad = m.id === badId;

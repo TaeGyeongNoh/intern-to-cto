@@ -1,28 +1,10 @@
 import { clockMs, nowSec, num, rngFor } from './fake';
+import { flavorOf } from './flavor';
 import { Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
 type Level = 'INFO' | 'WARN' | 'ERROR';
 type Line = { t: number; level: Level; msg: string };
-
-const INFO = [
-  'GET /api/products 200 34ms',
-  'POST /api/cart 200 51ms',
-  'order created orderId=%d',
-  'cache hit ratio=0.94 region=product',
-  'GET /api/order/%d 200 22ms',
-  'scheduler tick: settlement batch idle',
-];
-const WARN = [
-  'HikariPool-1 - Connection is not available, request timed out after 3000ms',
-  'slow request POST /api/order/checkout took %dms',
-  'retrying pg-gateway call (attempt 2/3)',
-];
-const ERROR = [
-  'PaymentException: pg-gateway read timeout (5000ms)',
-  'java.net.SocketTimeoutException: Read timed out',
-  'Transaction rolled back orderId=%d',
-];
 
 function fmt(msg: string, n: number) {
   return msg.replace('%d', String(n));
@@ -30,19 +12,24 @@ function fmt(msg: string, n: number) {
 
 function build(k: string, anomaly: boolean): Line[] {
   const r = rngFor(k, 'logs');
+  const { info, warn, error, key } = flavorOf(k).logs;
   let t = nowSec(k) * 1000 - r.int(20_000, 40_000);
   return Array.from({ length: 10 }, (_, i) => {
     t += r.int(80, 2400);
     const roll = r.next();
     const late = i >= 3;
     const level: Level = anomaly && late ? (roll < 0.45 ? 'ERROR' : roll < 0.75 ? 'WARN' : 'INFO') : 'INFO';
-    const pool = level === 'ERROR' ? ERROR : level === 'WARN' ? WARN : INFO;
-    return { t, level, msg: fmt(r.pick(pool), r.int(1000, 99999)) };
+    const pool = level === 'ERROR' ? error : level === 'WARN' ? warn : info;
+    const msg = fmt(r.pick(pool), r.int(1000, 99999));
+    // 단서가 되는 한 줄은 이상 징후가 시작되는 지점에 박아 둔다
+    if (anomaly && key && i === 2) return { t, level: key.level, msg: key.msg };
+    return { t, level, msg };
   }).reverse();
 }
 
 export function LogList(p: WidgetProps) {
   const lines = build(p.k, p.anomaly);
+  const fl = flavorOf(p.k);
   const r = rngFor(p.k, 'loghist');
   const bars = Array.from({ length: 30 }, (_, i) => {
     const total = r.int(30, 60);
@@ -52,10 +39,10 @@ export function LogList(p: WidgetProps) {
   const max = Math.max(...bars.map((b) => b.total));
   const count = bars.reduce((a, b) => a + b.total, 0);
   return (
-    <Panel {...p} title="로그 검색" sub={`order-api · 최근 10분 · ${num(count)}건`}>
+    <Panel {...p} title="로그 검색" sub={`${fl.service} · 최근 10분 · ${num(count)}건`}>
       <div className={s.search} aria-hidden>
         <span className={s.searchIcon}>⌕</span>
-        <span className={s.searchText}>{p.anomaly ? 'level:(ERROR OR WARN)' : 'service:order-api'}</span>
+        <span className={s.searchText}>{p.anomaly ? fl.logs.query : `service:${fl.service}`}</span>
         <span className={s.searchBtn}>검색</span>
       </div>
       <div className={s.histo} aria-hidden>

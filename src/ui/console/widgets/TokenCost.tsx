@@ -1,8 +1,8 @@
 import { num, rngFor } from './fake';
+import { flavorOf } from './flavor';
 import { Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
-const AGENTS = ['cs-supervisor', 'order-agent', 'refund-agent', 'search-agent', 'summary-agent'];
 /** 100만 토큰당 단가($, 입출력 평균) */
 const PRICE = 4.2;
 
@@ -10,8 +10,10 @@ const fmtTok = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
 
 export function TokenCost(p: WidgetProps) {
   const r = rngFor(p.k, 'tokens');
-  const hot = p.anomaly ? r.int(0, AGENTS.length - 1) : -1;
-  const rows = AGENTS.map((name, i) => {
+  const { usage, hot: hotName } = flavorOf(p.k).agents;
+  const rolled = r.int(0, usage.length - 1);
+  const hot = !p.anomaly ? -1 : hotName ? usage.indexOf(hotName) : rolled;
+  const rows = usage.map((name, i) => {
     const base = r.int(180, 620) * 1000;
     return { name, tokens: i === hot ? base * 9 : base, hot: i === hot };
   });

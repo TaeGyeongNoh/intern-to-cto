@@ -1,4 +1,5 @@
 import { rngFor, suffix } from './fake';
+import { flavorOf } from './flavor';
 import { Badge, Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
@@ -6,9 +7,10 @@ type Pod = { name: string; oom: boolean; restarts: number; mem: number; limit: n
 
 function build(k: string, anomaly: boolean): Pod[] {
   const r = rngFor(k, 'pods');
-  const app = r.pick(['order-api', 'payment-api', 'catalog-api', 'cart-api']);
+  const fl = flavorOf(k).pods;
+  const app = r.pick(fl.apps);
   const rs = suffix(r, 9);
-  const limit = r.pick([512, 768, 1024]);
+  const limit = r.pick(fl.limits);
   const bad = new Set<number>();
   if (anomaly) while (bad.size < 2) bad.add(r.int(0, 4));
   return Array.from({ length: 5 }, (_, i) => {

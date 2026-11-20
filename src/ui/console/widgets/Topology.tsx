@@ -1,5 +1,6 @@
 import { hashKey } from '../data';
 import { num, rngFor } from './fake';
+import { flavorOf } from './flavor';
 import { Panel, type WidgetProps } from './Panel';
 import s from './widgets.module.css';
 
@@ -10,28 +11,25 @@ const R = 17;
 
 export function Topology(p: WidgetProps) {
   const r = rngFor(p.k, 'topo');
-  const ext = r.pick([
-    { abbr: 'PG', label: '외부 PG' },
-    { abbr: 'CARD', label: '카드사 API' },
-    { abbr: 'AUTH', label: '본인인증' },
-  ]);
+  const fl = flavorOf(p.k).topology;
+  const ext = r.pick(fl.ext);
   const nodes: Node[] = [
     { id: 'u', x: 34, y: 84, abbr: 'USER', label: '사용자', kind: 'user' },
     { id: 'api', x: 122, y: 84, abbr: 'API', label: 'api-gateway', kind: 'app' },
-    { id: 'pay', x: 214, y: 84, abbr: 'PAY', label: 'payment-api', kind: 'app' },
-    { id: 'db', x: 306, y: 30, abbr: 'DB', label: 'order-db', kind: 'db' },
+    { id: 'pay', x: 214, y: 84, ...fl.app, kind: 'app' },
+    { id: 'db', x: 306, y: 30, ...fl.db, kind: 'db' },
     { id: 'ext', x: 306, y: 130, ...ext, kind: 'ext' },
   ];
   const tps = r.int(80, 160);
   const edges: Edge[] = [
     { from: 'u', to: 'api', tps, ms: r.int(40, 90) },
     { from: 'api', to: 'pay', tps: Math.round(tps * 0.6), ms: r.int(30, 80) },
-    { from: 'pay', to: 'db', tps: Math.round(tps * 0.9), ms: r.int(2, 12) },
-    { from: 'pay', to: 'ext', tps: Math.round(tps * 0.4), ms: p.anomaly ? r.int(4200, 7800) : r.int(90, 260) },
+    { from: 'pay', to: 'db', tps: Math.round(tps * 0.9), ms: p.anomaly && fl.bad === 'db' ? r.int(4200, 7800) : r.int(2, 12) },
+    { from: 'pay', to: 'ext', tps: Math.round(tps * 0.4), ms: p.anomaly && fl.bad === 'ext' ? r.int(4200, 7800) : r.int(90, 260) },
   ];
   const at = (id: string) => nodes.find((n) => n.id === id)!;
   const uid = `tp${hashKey(p.k).toString(36)}`;
-  const isBad = (e: Edge) => p.anomaly && e.to === 'ext';
+  const isBad = (e: Edge) => p.anomaly && e.to === fl.bad;
 
   return (
     <Panel {...p} title="애플리케이션 토폴로지" sub={`실시간 · 호출 ${num(tps)}/s`}>
@@ -80,7 +78,7 @@ export function Topology(p: WidgetProps) {
           );
         })}
         {nodes.map((n) => {
-          const bad = p.anomaly && n.id === 'ext';
+          const bad = p.anomaly && n.id === fl.bad;
           const color = n.kind === 'db' ? 'var(--step-dbc)' : n.kind === 'ext' ? 'var(--step-httpc)' : n.kind === 'user' ? 'var(--good)' : 'var(--normal)';
           return (
             <g key={n.id}>
