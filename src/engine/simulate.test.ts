@@ -24,6 +24,19 @@ describe('simulate', () => {
     expect(r.assetsWithHousing.p90).toBeGreaterThanOrEqual(r.assets.p90);
     expect(r.jeonseRate).toBeGreaterThanOrEqual(r.houseRate);
   });
+  it('투자 지표: 단계 비율 합 1, 투자한 판의 손익 분위', () => {
+    const r = simulate(100, CONTENT);
+    expect(r.invest.perGame).toBeGreaterThan(0);
+    expect(r.invest.tierShare.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    expect(r.invest.net.p10).toBeLessThanOrEqual(r.invest.net.median);
+    expect(r.invest.net.median).toBeLessThanOrEqual(r.invest.net.p90);
+  });
+  it('greedy: ETF 풀매수만 하고 다른 물건은 사지 않는다', () => {
+    const r = simulate(50, CONTENT, 1, 'greedy');
+    expect(r.invest.tierShare[2]).toBe(1);
+    expect(r.invest.coinNegShare).toBe(0);
+    expect(r.avgPurchases).toBeCloseTo(r.invest.perGame);
+  });
   it('결정론적이다', () => {
     expect(simulate(30, CONTENT, 7)).toEqual(simulate(30, CONTENT, 7));
   });
