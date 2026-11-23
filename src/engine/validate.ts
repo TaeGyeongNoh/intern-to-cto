@@ -69,6 +69,28 @@ export function validateContent(c: Content): string[] {
   for (const co of Object.values(c.companies))
     for (const card of co.cards) if (!cardIds.has(card)) errs.push(`company ${co.id}: unknown card ${card}`);
   if (!c.companies.whatap) errs.push('missing whatap company');
+  for (const co of Object.values(c.companies)) {
+    const stages = co.stages;
+    if (!stages) continue;
+    const where = `company ${co.id}`;
+    if (co.hidden || (!co.start && co.tier !== 'startup' && co.tier !== 'mid')) errs.push(`${where}: stages not allowed (hidden or large+ non-start company)`);
+    if (stages.length < 2) {
+      errs.push(`${where}: needs at least 2 stages`);
+      continue;
+    }
+    if (stages[0].level !== co.level || stages[0].baseSalary !== co.baseSalary) errs.push(`${where}: first stage must match company level/baseSalary`);
+    stages.forEach((st, i) => {
+      const at = `${where} stage ${i}`;
+      if (i > 0 && (st.level <= stages[i - 1].level || st.baseSalary <= stages[i - 1].baseSalary)) errs.push(`${at}: level/baseSalary must increase`);
+      for (const card of st.addCards ?? []) if (!cardIds.has(card)) errs.push(`${at}: unknown card ${card}`);
+      if (i === stages.length - 1) {
+        if (st.up !== 0 || st.down !== 0) errs.push(`${at}: last stage must have up = down = 0`);
+      } else {
+        if (st.ipo) errs.push(`${at}: ipo only on the last stage`);
+        if (!(st.up >= 0 && st.down >= 0 && st.up + st.down < 1)) errs.push(`${at}: invalid up/down`);
+      }
+    });
+  }
 
   const shopFlags = new Set(Object.keys(c.shop).map(shopFlag));
   for (const [key, item] of Object.entries(c.shop)) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import type { Content } from './types';
+import type { CardId, Company, Content, GrowthStage } from './types';
 import { validateContent } from './validate';
 
 describe('validateContent', () => {
@@ -109,5 +109,30 @@ describe('반복 구매', () => {
     const bad = { ...CONTENT.shop.keyboard, once: false };
     const errs = validateContent({ ...CONTENT, shop: { ...CONTENT.shop, keyboard: bad } });
     expect(errs.some((e) => e.includes('shop keyboard: only invest items can be repeatable'))).toBe(true);
+  });
+  describe('회사 성장 단계', () => {
+    const base = CONTENT.companies['tiny-commerce'];
+    const st = (over: Partial<GrowthStage> = {}): GrowthStage => ({ name: 's', level: base.level, baseSalary: base.baseSalary, up: 0.1, down: 0.1, text: 't', ...over });
+    const last = (over: Partial<GrowthStage> = {}) => st({ level: base.level + 5, baseSalary: base.baseSalary + 400, up: 0, down: 0, ...over });
+    const errsFor = (stages: GrowthStage[], over: Partial<Company> = {}) =>
+      validateContent({ ...CONTENT, companies: { ...CONTENT.companies, 'tiny-commerce': { ...base, ...over, stages } } }).join('\n');
+
+    it('정상 단계는 통과', () => {
+      expect(errsFor([st(), last({ ipo: true })])).toBe('');
+    });
+    it('2단계 이상', () => expect(errsFor([st({ up: 0, down: 0 })])).toContain('at least 2 stages'));
+    it('첫 단계는 회사 값과 같다', () => expect(errsFor([st({ level: 1 }), last()])).toContain('first stage must match'));
+    it('level·baseSalary는 단조 증가', () => expect(errsFor([st(), last({ baseSalary: base.baseSalary - 1 })])).toContain('must increase'));
+    it('마지막 단계는 up = down = 0', () => expect(errsFor([st(), last({ up: 0.1 })])).toContain('last stage must have up = down = 0'));
+    it('나머지 단계는 0 <= up, down, up + down < 1', () => {
+      expect(errsFor([st({ up: 0.6, down: 0.4 }), last()])).toContain('invalid up/down');
+      expect(errsFor([st({ up: -0.1 }), last()])).toContain('invalid up/down');
+    });
+    it('addCards는 있는 카드', () => expect(errsFor([st(), last({ addCards: ['nope' as CardId] })])).toContain('unknown card nope'));
+    it('ipo는 마지막 단계에만', () => expect(errsFor([st({ ipo: true }), last()])).toContain('ipo only on the last stage'));
+    it('숨은 회사, 시작 회사가 아닌 대기업 이상에는 단계 금지', () => {
+      expect(errsFor([st(), last()], { hidden: true })).toContain('stages not allowed');
+      expect(errsFor([st(), last()], { tier: 'large' })).toContain('stages not allowed');
+    });
   });
 });
