@@ -205,3 +205,26 @@ describe('회사 생활', () => {
     expect(html).toContain('스톡옵션 800만원어치');
   });
 });
+
+describe('즉시 은퇴 버튼', () => {
+  it('경력 1년차부터 해 넘기기 옆에 은퇴하기가 보인다 (첫 해에는 없다)', async () => {
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '은퇴', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    const view = (over: object) => renderToString(<GameView game={{ ...g, state: makeState(over), queue: [{ kind: 'year' as const }] }} log={[]} onInput={() => {}} onRestart={() => {}} />);
+    const working = view({ yearsInCareer: 3 });
+    expect(working).toContain('은퇴하기');
+    expect(working).toContain('다음 해로');
+    expect(working).not.toContain('정말 은퇴할까요');
+    expect(view({ yearsInCareer: 0 })).not.toContain('은퇴하기');
+  });
+  it('새 엔딩도 엔딩 화면에 렌더된다', async () => {
+    const { EndingScreen } = await import('./screens/EndingScreen');
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '파이어', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    for (const endingId of ['fire', 'new-path']) {
+      const ended = { ...g, state: makeState({ retired: true, flags: ['retired-voluntary'], endingId }), queue: [{ kind: 'ended' as const }] };
+      const title = CONTENT.endings.find((e) => e.id === endingId)!.title;
+      expect(renderToString(<EndingScreen game={ended} onRestart={() => {}} />)).toContain(title);
+    }
+  });
+});

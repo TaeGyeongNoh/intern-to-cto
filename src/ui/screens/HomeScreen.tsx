@@ -1,13 +1,13 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CONTENT } from '../../content';
 import { CARDS } from '../../content/cards';
 import { companyStageName, effectiveCompany } from '../../engine/company';
-import { pending, validInputs, type Game, type Input } from '../../engine/game';
+import { pending, RETIRE_INPUT, validInputs, type Game, type Input } from '../../engine/game';
 import { ROLE_LABELS, roleFor } from '../../engine/roles';
 import { ovr, POSITION_LABELS } from '../../engine/stats';
 import { STAT_IDS, STAT_LABELS, type CardId, type Role } from '../../engine/types';
 import { Button, Chip, StatBar } from '../components/Icon';
-import { ArrowDown, ArrowUp, ChevronRight, EyeOff, Flame, IconText, PiggyBank, Wallet } from '../components/Icons';
+import { ArrowDown, ArrowUp, ChevronRight, EyeOff, Flame, IconText, LogOut, PiggyBank, Wallet } from '../components/Icons';
 import { feedIcon, TIER_LABELS, won } from './format';
 import { AVATARS } from '../art';
 import { NextTitle } from './NextTitle';
@@ -38,7 +38,10 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
   const hist = st.record.history;
   const ovrDelta = hist.length >= 2 ? hist[hist.length - 1].ovr - hist[hist.length - 2].ovr : 0;
   const isYear = pending(game).kind === 'year';
-  const canAdvance = isYear && validInputs(game, CONTENT).length > 0;
+  const valid = isYear ? validInputs(game, CONTENT) : [];
+  const canAdvance = valid.some((v) => v.t === 'pick' && v.i === 0);
+  const canRetire = valid.some((v) => v.t === 'pick' && v.i === RETIRE_INPUT.i);
+  const [confirmRetire, setConfirmRetire] = useState(false);
   const hot = st.burnout >= 70;
 
   return (
@@ -144,11 +147,36 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
 
       {isYear && (
         <div className={s.bottom}>
-          <div className={s.bottomInner}>
-            <Button disabled={!canAdvance} onClick={() => onInput({ t: 'pick', i: 0 })}>
-              다음 해로 <span className={s.nextYear}>{st.year + 1}</span> <ChevronRight size={18} strokeWidth={2.25} />
-            </Button>
-          </div>
+          {confirmRetire && canRetire ? (
+            <div className={`${s.bottomInner} ${s.confirm}`}>
+              <p className={s.confirmText}>
+                <b>정말 은퇴할까요?</b> 현재 상태로 엔딩이 정해져요. 되돌릴 수 없어요.
+              </p>
+              <div className={s.bottomRow}>
+                <span className={s.side}>
+                  <Button variant="ghost" onClick={() => setConfirmRetire(false)}>취소</Button>
+                </span>
+                <span className={s.grow}>
+                  <Button onClick={() => onInput(RETIRE_INPUT)}>은퇴 확정</Button>
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className={`${s.bottomInner} ${s.bottomRow}`}>
+              {canRetire && (
+                <span className={s.side}>
+                  <Button variant="ghost" onClick={() => setConfirmRetire(true)}>
+                    <LogOut size={16} /> 은퇴하기
+                  </Button>
+                </span>
+              )}
+              <span className={s.grow}>
+                <Button disabled={!canAdvance} onClick={() => onInput({ t: 'pick', i: 0 })}>
+                  다음 해로 <span className={s.nextYear}>{st.year + 1}</span> <ChevronRight size={18} strokeWidth={2.25} />
+                </Button>
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
