@@ -1,4 +1,5 @@
 import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer } from './career';
+import { growCompany } from './company';
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
@@ -24,7 +25,8 @@ export type Pending =
   | { kind: 'review' }
   /** 연말 상점: pick i는 items[i]를 사고, pick items.length는 건너뛴다 */
   | { kind: 'shop'; items: string[] }
-  | { kind: 'offers'; offers: Offer[] }
+  /** forced: 지금 회사가 문을 닫아 남을 수 없다 ("남는다" 입력이 없다) */
+  | { kind: 'offers'; offers: Offer[]; forced?: true }
   | { kind: 'ended' };
 
 export type Input = { t: 'pick'; i: number } | { t: 'ask' };
@@ -86,7 +88,7 @@ export function validInputs(g: Game, c: Content): Input[] {
     case 'shop':
       return Array.from({ length: p.items.length + 1 }, (_, i) => pick(i));
     case 'offers':
-      return Array.from({ length: p.offers.length + 1 }, (_, i) => pick(i));
+      return Array.from({ length: p.offers.length + (p.forced ? 0 : 1) }, (_, i) => pick(i));
     default:
       return [];
   }
@@ -262,15 +264,21 @@ function drain(g: Game, c: Content): Game {
     if (p.kind === 'review') {
       const rng = createRng(game.rngState);
       const r = review(game.state, rng, c);
+      let state = r.state;
+      const feed = [...r.feed];
       const q: Pending[] = [];
-      if (!r.state.retired) {
-        const items = pickShopItems(r.state, rng, c);
+      if (!state.retired) {
+        const grown = growCompany(state, rng, c);
+        state = grown.state;
+        feed.push(...grown.feed);
+        const items = pickShopItems(state, rng, c);
         if (items.length > 0) q.push({ kind: 'shop', items });
-        const offers = generateOffers(r.state, rng, c);
-        if (offers.length > 0) q.push({ kind: 'offers', offers });
+        const offers = generateOffers(state, rng, c, { forced: grown.closed });
+        if (grown.closed) q.push({ kind: 'offers', offers, forced: true });
+        else if (offers.length > 0) q.push({ kind: 'offers', offers });
         q.push({ kind: 'year' });
       }
-      game = { ...game, rngState: rng.getState(), state: r.state, queue: [...q, ...game.queue.slice(1)], feed: [...game.feed, ...r.feed] };
+      game = { ...game, rngState: rng.getState(), state, queue: [...q, ...game.queue.slice(1)], feed: [...game.feed, ...feed] };
       continue;
     }
     return game;

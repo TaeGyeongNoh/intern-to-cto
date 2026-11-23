@@ -125,3 +125,35 @@ describe('determineEnding', () => {
     });
   });
 });
+
+describe('폐업과 강제 이직', () => {
+  it('폐업한 회사는 제안 풀에서 빠진다', () => {
+    const s = makeState({ reputation: 60, companyStage: { musinsarang: 'closed' } });
+    for (let seed = 1; seed < 200; seed++)
+      for (const o of generateOffers(s, createRng(seed), CONTENT)) expect(o.companyId).not.toBe('musinsarang');
+  });
+  it('forced면 제안이 최소 1건, 같은 루트에서 레벨이 OVR에 가장 가까운 곳으로 채운다', () => {
+    const s = makeState({ companyId: 'tiny-commerce', reputation: 0, companyStage: { 'tiny-commerce': 'closed' } });
+    const o = ovr(s.stats, s.position);
+    let filled = 0;
+    for (let seed = 1; seed < 200; seed++) {
+      const offers = generateOffers(s, createRng(seed), CONTENT, { forced: true });
+      expect(offers.length).toBeGreaterThanOrEqual(1);
+      for (const x of offers) expect(x.companyId).not.toBe('tiny-commerce');
+      const plain = generateOffers(s, createRng(seed), CONTENT);
+      if (plain.length === 0) {
+        filled++;
+        const near = Object.values(CONTENT.companies)
+          .filter((co) => co.route === 'commerce' && !co.hidden && co.id !== 'tiny-commerce')
+          .sort((a, b) => Math.abs(a.level - o) - Math.abs(b.level - o))[0];
+        expect(offers[0].companyId).toBe(near.id);
+      }
+    }
+    expect(filled).toBeGreaterThan(0);
+  });
+  it('이직하면 스톡옵션이 사라진다', () => {
+    const s = makeState({ stock: { companyId: 'dangeun', value: 1200 } });
+    const offer = generateOffers(makeState({ reputation: 80 }), createRng(3), CONTENT, { forced: true })[0];
+    expect(joinCompany(s, offer, CONTENT).stock).toBeUndefined();
+  });
+});

@@ -303,3 +303,56 @@ describe('포스트모템 득실', () => {
     expect(apply(pm(true), { t: 'pick', i: 2 }, CONTENT).state.reputation).toBe(36);
   });
 });
+
+describe('회사 성장 · 폐업', () => {
+  const grow = (up: number, down: number): Content => {
+    const base = CONTENT.companies['tiny-commerce'];
+    const evX: GameEvent = { id: 'x', when: {}, scheduledOnly: true, text: 'x', choices: [{ label: 'x', effects: {} }] };
+    return {
+      ...CONTENT,
+      events: { ...CONTENT.events, x: evX },
+      companies: {
+        ...CONTENT.companies,
+        'tiny-commerce': {
+          ...base,
+          stages: [
+            { name: '시드', level: base.level, baseSalary: base.baseSalary, up, down, text: '' },
+            { name: '시리즈 A', level: base.level + 5, baseSalary: base.baseSalary + 400, addCards: ['log'], up: 0, down: 0, text: '{company}이/가 시리즈 A 투자를 받았다.' },
+          ],
+        },
+      },
+    };
+  };
+  const atReview = (_c: Content): Game => ({
+    setup, seed: 1, rngState: 1,
+    state: makeState({ companyId: 'tiny-commerce', companiesWorked: ['tiny-commerce'], yearsInCareer: 2, deck: [], cardsSeen: [], burnout: 0, age: 30 }),
+    queue: [{ kind: 'event', eventId: 'x' }, { kind: 'review' }], log: [], feed: [],
+  });
+
+  it('연말 평가 뒤 다니는 회사가 다음 단계로 오르면 카드가 생기고 feed에 남는다', () => {
+    const c = grow(1, 0);
+    const g = apply(atReview(c), { t: 'pick', i: 0 }, c);
+    expect(g.state.companyStage['tiny-commerce']).toBe(1);
+    expect(g.state.deck).toContain('log');
+    expect(g.feed).toContain('오늘의떡집이 시리즈 A 투자를 받았다.');
+  });
+  it('폐업하면 강제 이직: 남는다가 없고, 제안이 최소 1건이다', () => {
+    const c = grow(0, 1);
+    for (let seed = 1; seed < 40; seed++) {
+      const g = apply({ ...atReview(c), rngState: seed }, { t: 'pick', i: 0 }, c);
+      expect(g.state.companyStage['tiny-commerce']).toBe('closed');
+      const offersAt = g.queue.findIndex((p) => p.kind === 'offers');
+      expect(offersAt).toBeGreaterThanOrEqual(0);
+      let h = g;
+      while (pending(h).kind !== 'offers') h = apply(h, validInputs(h, c).at(-1)!, c);
+      const p = pending(h);
+      if (p.kind !== 'offers') throw new Error('expected offers');
+      expect(p.forced).toBe(true);
+      expect(p.offers.length).toBeGreaterThanOrEqual(1);
+      expect(validInputs(h, c)).toHaveLength(p.offers.length);
+      expect(() => apply(h, { t: 'pick', i: p.offers.length }, c)).toThrow();
+      const moved = apply(h, { t: 'pick', i: 0 }, c);
+      expect(moved.state.companyId).not.toBe('tiny-commerce');
+    }
+  });
+});

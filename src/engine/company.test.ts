@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { companyStageName, effectiveCompany } from './company';
+import { companyStageName, effectiveCompany, growCompany, IPO_MULT } from './company';
+import { createRng } from './rng';
 import { makeState } from './testing';
-import type { Company, Content } from './types';
+import type { Company, Content, GameState } from './types';
 
 export const growing: Company = {
   id: 'grow', name: '자라나', route: 'commerce', tier: 'startup', level: 40, baseSalary: 3500, cards: ['log'],
@@ -67,5 +68,70 @@ describe('엔진의 회사 조회는 단계를 반영한다', () => {
     const { createRng } = await import('./rng');
     const s = makeState({ companyId: 'grow', companyStage: { grow: 3 } });
     expect(runYear(s, createRng(1), withGrowing).feed[0]).toContain('서포트');
+  });
+});
+
+/** 모든 단계의 up/down을 덮어쓴 콘텐츠 (마지막 단계는 0/0 유지) */
+const forcing = (up: number, down: number): Content => ({
+  ...withGrowing,
+  companies: {
+    ...withGrowing.companies,
+    grow: { ...growing, stages: growing.stages!.map((st, i, all) => (i === all.length - 1 ? st : { ...st, up, down })) },
+  },
+});
+
+describe('growCompany', () => {
+  const at = (over: Partial<GameState> = {}) => makeState({ companyId: 'grow', yearsInCareer: 2, deck: ['log'], cardsSeen: ['log'], ...over });
+
+  it('다음 단계로 오르면 카드가 생기고 문장을 남긴다 (조사 처리)', () => {
+    const r = growCompany(at(), createRng(1), forcing(1, 0));
+    expect(r.state.companyStage.grow).toBe(1);
+    expect(r.state.deck).toEqual(['log', 'apm']);
+    expect(r.state.cardsSeen).toContain('apm');
+    expect(r.feed).toEqual(['자라나가 시리즈 A 투자를 받았다.']);
+    expect(r.state.record.story.at(-1)).toContain('자라나가 시리즈 A 투자를 받았다.');
+    expect(r.closed).toBe(false);
+  });
+  it('상장하면 이 회사 스톡옵션을 IPO_MULT배로 자산에 넣고 비운다', () => {
+    const r = growCompany(at({ companyStage: { grow: 2 }, assets: 1000, stock: { companyId: 'grow', value: 1200 } }), createRng(1), forcing(1, 0));
+    expect(r.state.companyStage.grow).toBe(3);
+    expect(r.state.assets).toBe(1000 + 1200 * IPO_MULT);
+    expect(r.state.stock).toBeUndefined();
+    expect(r.feed.join('\n')).toContain(`스톡옵션 ${(1200 * IPO_MULT).toLocaleString('ko-KR')}만원`);
+  });
+  it('폐업하면 closed, 스톡옵션 소멸', () => {
+    const r = growCompany(at({ stock: { companyId: 'grow', value: 500 } }), createRng(1), forcing(0, 1));
+    expect(r.state.companyStage.grow).toBe('closed');
+    expect(r.state.stock).toBeUndefined();
+    expect(r.closed).toBe(true);
+    expect(r.feed[0]).toContain('자라나가 문을 닫는다');
+  });
+  it('머무르면 아무것도 바뀌지 않는다', () => {
+    const s = at();
+    const r = growCompany(s, createRng(1), forcing(0, 0));
+    expect(r.state).toEqual(s);
+    expect(r.feed).toEqual([]);
+  });
+  it('1년차 이전, founder, 마지막 단계, 폐업, 단계 없는 회사는 판정하지 않는다 (rng도 쓰지 않는다)', () => {
+    const c = forcing(1, 0);
+    const cases = [
+      at({ yearsInCareer: 0 }),
+      at({ flags: ['founder'] }),
+      at({ companyStage: { grow: 3 } }),
+      at({ companyStage: { grow: 'closed' } }),
+      makeState({ companyId: 'coupangpang', yearsInCareer: 2 }),
+    ];
+    for (const s of cases) {
+      const rng = createRng(1);
+      const r = growCompany(s, rng, c);
+      expect(r.state).toBe(s);
+      expect(rng.getState()).toBe(createRng(1).getState());
+    }
+  });
+  it('다니지 않는 회사의 단계는 그대로고 입력 상태를 바꾸지 않는다', () => {
+    const s = Object.freeze(at({ companyStage: { other: 1 } }));
+    const r = growCompany(s, createRng(1), forcing(1, 0));
+    expect(r.state.companyStage).toEqual({ other: 1, grow: 1 });
+    expect(s.companyStage).toEqual({ other: 1 });
   });
 });

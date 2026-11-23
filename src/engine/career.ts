@@ -36,7 +36,8 @@ function makeOffer(co: Company, s: GameState, o: number): Offer {
   };
 }
 
-export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
+/** forced: 지금 회사가 문을 닫아 남을 수 없다. 제안이 0건이면 같은 루트에서 한 곳을 채운다 */
+export function generateOffers(s: GameState, rng: Rng, c: Content, opts: { forced?: boolean } = {}): Offer[] {
   if (s.flags.includes('founder')) return [];
   const o = ovr(s.stats, s.position);
   const n = rng.weighted([
@@ -54,6 +55,14 @@ export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
     const co = rng.pick(pool);
     pool.splice(pool.indexOf(co), 1);
     offers.push(makeOffer(co, s, o));
+  }
+  if (opts.forced && offers.length === 0) {
+    const fallback = Object.keys(c.companies)
+      .filter((id) => id !== s.companyId && !isClosed(s, id))
+      .map((id) => effectiveCompany(id, s, c))
+      .filter((co) => !co.hidden && co.route === s.route)
+      .sort((a, b) => Math.abs(a.level - o) - Math.abs(b.level - o))[0];
+    if (fallback) offers.push(makeOffer(fallback, s, o));
   }
   const whatap = c.companies[WHATAP_ID] && effectiveCompany(WHATAP_ID, s, c);
   if (whatap && s.companyId !== WHATAP_ID && scoutEligible(s) && rng.chance(SCOUT_CHANCE)) offers.push({ ...makeOffer(whatap, s, o), special: 'whatap-scout' });
@@ -73,6 +82,7 @@ function enterCompany(s: GameState, co: Company, salary: number): GameState {
     maxSalary: Math.max(s.maxSalary, salary),
     burnout: clamp(s.burnout - 15, 0, 100),
     scheduled: [],
+    stock: undefined,
   };
 }
 
