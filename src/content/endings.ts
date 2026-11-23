@@ -2,6 +2,8 @@ import type { Ending, GameState } from '../engine/types';
 
 /** 전설의 SRE에 필요한 빠른 복구(MTTR 120분 이하) 횟수 */
 export const LEGEND_FAST = 10;
+/** 든든한 팀장·터줏대감 시니어에 필요한 마지막 회사 근속 연수 */
+export const LONG_TENURE = 3;
 const resolveRate = (s: GameState) => (s.record.incidentsTotal ? s.record.incidentsResolved / s.record.incidentsTotal : 0);
 
 export const ENDINGS: Ending[] = [
@@ -16,5 +18,9 @@ export const ENDINGS: Ending[] = [
   { id: 'principal', priority: 55, title: '프린시펄 엔지니어', description: '코드 한 줄로 회사의 방향을 바꾼다.', check: (s) => s.title === '프린시펄' },
   { id: 'one-company', priority: 50, title: '원컴퍼니맨', description: '첫 회사에서 마지막까지.', check: (s) => s.companiesWorked.length === 1 },
   { id: 'founder-fail', priority: 45, title: '창업, 그리고 폐업', description: '실패했지만 후회는 없다.', check: (s) => s.flags.includes('founder-failed') },
+  // 현실의 흔한 끝. 대부분은 CTO가 아니라 스태프·팀장·시니어로 커리어를 마친다 (프레스티지 엔딩보다 아래, 평범한 행복보다 위)
+  { id: 'staff', priority: 40, title: '스태프 엔지니어', description: '직함보다 "그건 그분한테 물어봐"가 더 정확한 설명이었다.', check: (s) => s.title === '스태프' },
+  { id: 'team-lead', priority: 38, title: '든든한 팀장', description: '1on1과 코드 리뷰 사이에서, 팀이 오래 버티는 법을 찾았다.', check: (s) => s.title === '팀장' && s.yearsAtCompany >= LONG_TENURE },
+  { id: 'veteran-senior', priority: 35, title: '터줏대감 시니어', description: '레거시가 왜 그렇게 생겼는지 아는 마지막 사람.', check: (s) => s.title === '시니어' && s.yearsAtCompany >= LONG_TENURE },
   { id: 'ordinary', priority: 0, title: '평범한 행복', description: '큰 사고 없이, 좋은 동료들과 오래 일했다.', check: () => true },
 ];

@@ -48,6 +48,8 @@ export const ENDING_ART: Record<string, string> = {
   'founder-exit': endFounderExit, 'founder-fail': endFounderFail, cto: endCto, vp: endVp,
   'legend-sre': endLegendSre, keynote: endKeynote, principal: endPrincipal,
   'one-company': endOneCompany, ordinary: endOrdinary,
+  // 흔한 끝 엔딩은 기존 그림을 재사용한다
+  staff: endPrincipal, 'team-lead': evLead, 'veteran-senior': endOneCompany,
 };
 
 const EVENT_ART: Record<string, string> = {

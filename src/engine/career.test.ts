@@ -129,6 +129,27 @@ describe('determineEnding', () => {
     expect(determineEnding(makeState(), CONTENT).id).toBe('one-company');
     expect(determineEnding(makeState({ companiesWorked: ['a', 'b'] }), CONTENT).id).toBe('ordinary');
   });
+  describe('흔한 커리어 끝: 스태프·팀장·오래 다닌 시니어', () => {
+    const at = (title: string, yearsAtCompany: number, extra: Partial<Parameters<typeof makeState>[0]> = {}) =>
+      determineEnding(makeState({ companiesWorked: ['a', 'b'], title, yearsAtCompany, ...extra }), CONTENT).id;
+    it('스태프로 끝나면 스태프 엔지니어 (근속과 무관)', () => {
+      expect(at('스태프', 1)).toBe('staff');
+    });
+    it('팀장은 지금 회사 3년 이상이면 든든한 팀장, 갓 옮긴 팀장은 평범한 행복', () => {
+      expect(at('팀장', 3)).toBe('team-lead');
+      expect(at('팀장', 2)).toBe('ordinary');
+    });
+    it('시니어는 지금 회사 3년 이상이면 터줏대감, 아니면 평범한 행복', () => {
+      expect(at('시니어', 3)).toBe('veteran-senior');
+      expect(at('시니어', 2)).toBe('ordinary');
+      expect(at('미드레벨', 10)).toBe('ordinary');
+    });
+    it('창업 실패·원컴퍼니맨·키노트가 더 우선한다', () => {
+      expect(at('스태프', 5, { flags: ['founder-failed'] })).toBe('founder-fail');
+      expect(at('팀장', 5, { companiesWorked: ['a'] })).toBe('one-company');
+      expect(at('시니어', 5, { traits: { keynote: 2 } })).toBe('keynote');
+    });
+  });
   describe('전설의 SRE: 빠른 복구 횟수와 해결률', () => {
     const base = makeState({ companiesWorked: ['a', 'b'] });
     const withRecord = (position: 'sre' | 'backend', fastResolves: number, resolved: number, total: number) =>

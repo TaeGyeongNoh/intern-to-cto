@@ -6,6 +6,7 @@ import { pending, replay, type Input, type Setup } from './game';
  * 호환성 고정: 출신(학력·병역) 필드가 생기기 전 HEAD(d647fae)에서 무작위 플레이로 기록한 판.
  * Setup에 새 필드가 없으면 기본 출신으로 해석되어 완전히 같은 결과가 나와야 한다(옛 저장·공유 링크).
  * 콘텐츠·밸런스를 바꾸면 이 기록이 깨질 수 있다. 그때는 새로 기록하되, 출신 기본값 때문에 깨지면 안 된다.
+ * 흔한 끝 엔딩(스태프·팀장·시니어)이 생기면서 첫 판은 엔딩만 ordinary → team-lead로 바뀌었다(rng·연차·연봉은 그대로).
  * stateHash는 출신 묶음에서 추가된 GameState 필드(boundUntil)를 뺀 JSON의 FNV-1a 해시다.
  */
 const RECORDED: { setup: Setup; seed: number; log: string; endingId: string; rngState: number; years: number; maxSalary: number; stateHash: string }[] = [
@@ -13,7 +14,7 @@ const RECORDED: { setup: Setup; seed: number; log: string; endingId: string; rng
     setup: { name: '호환', position: 'backend', route: 'commerce', candidate: 0 },
     seed: 4242,
     log: '20002220222021100220112100210021201120212022221022002020020210110102101120112102101212201_211001100_0011110020100_1202000020212120221212201001211202020121011001120022011100222010200013020001222120010112020000200202102220202021000',
-    endingId: 'ordinary', rngState: 2684619810, years: 26, maxSalary: 9516, stateHash: 'f9dc9fd3',
+    endingId: 'team-lead', rngState: 2684619810, years: 26, maxSalary: 9516, stateHash: '63a8954f',
   },
   {
     setup: { name: '호환', position: 'sre', route: 'finance', candidate: 2 },
