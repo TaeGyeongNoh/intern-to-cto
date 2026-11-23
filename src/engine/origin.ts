@@ -25,6 +25,12 @@ export function resolveOrigin(setup: Setup, c: Content): Origin {
   return { education, service };
 }
 
+/** 엔딩·공유 카드에 보일 학력 이름. 기본 학력이거나 모르는 id면 없다 (병역은 보이지 않는다) */
+export function educationLabel(setup: Setup, c: Content): string | undefined {
+  const id = setup.education;
+  return id && id !== DEFAULT_EDUCATION ? c.educations[id]?.name : undefined;
+}
+
 export const startAge = (o: Origin): number => o.education.age + o.service.years;
 
 /** 프롤로그 첫 이벤트: 병역 > 학력 > 기본 */

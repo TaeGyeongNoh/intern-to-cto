@@ -67,6 +67,12 @@ import {
   FilePenLine as LFilePenLine,
   Ticket as LTicket,
   Building2 as LBuilding2,
+  School as LSchool,
+  FlaskConical as LFlaskConical,
+  Shuffle as LShuffle,
+  Shield as LShield,
+  Factory as LFactory,
+  Microscope as LMicroscope,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react';
@@ -153,6 +159,12 @@ export const Handshake = make(LHandshake, 'Handshake');
 export const FilePenLine = make(LFilePenLine, 'FilePenLine');
 export const Ticket = make(LTicket, 'Ticket');
 export const Building2 = make(LBuilding2, 'Building2');
+export const School = make(LSchool, 'School');
+export const FlaskConical = make(LFlaskConical, 'FlaskConical');
+export const Shuffle = make(LShuffle, 'Shuffle');
+export const Shield = make(LShield, 'Shield');
+export const Factory = make(LFactory, 'Factory');
+export const Microscope = make(LMicroscope, 'Microscope');
 
 export type IconTone = 'muted' | 'primary' | 'good' | 'warning' | 'critical' | 'inherit';
 

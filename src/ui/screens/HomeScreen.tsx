@@ -67,6 +67,7 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
             </div>
             <div className={s.coLine}>
               <Pill tone={ROLE_TONE[role]}>{ROLE_LABELS[role]}</Pill>
+              {st.boundUntil > st.yearsInCareer && <Pill tone="var(--warning)">{`복무 중 · ${st.boundUntil - st.yearsInCareer}년 남음`}</Pill>}
               <IconText icon={Wallet} className={s.salary}>{won(st.salary)}</IconText>
               <IconText icon={PiggyBank} className={s.salary}><span className={s.muted}>자산</span> {won(st.assets)}</IconText>
             </div>

@@ -51,6 +51,40 @@ describe('유형 표시', () => {
   });
 });
 
+describe('출신 (학력·병역)', () => {
+  it('생성 화면에 출신·병역 단계와 시작 나이 요약이 나온다', async () => {
+    const { CreateScreen } = await import('./screens/CreateScreen');
+    const html = renderToString(<CreateScreen onStart={() => {}} onContinue={() => {}} />);
+    for (const e of Object.values(CONTENT.educations)) expect(html).toContain(e.name);
+    for (const sv of Object.values(CONTENT.services)) expect(html).toContain(sv.name);
+    expect(html).toContain('22세 시작 · 은퇴까지 최대 26년');
+    expect(html).toContain('출신 보정 전');
+    expect(html).toContain('석사만');
+  });
+  it('대체복무 중이면 홈에 남은 복무 기간 칩', async () => {
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '복무', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    const view = (over: object) => renderToString(<GameView game={{ ...g, state: makeState(over), queue: [{ kind: 'year' as const }] }} log={[]} onInput={() => {}} onRestart={() => {}} />);
+    expect(view({ yearsInCareer: 1, boundUntil: 3 })).toContain('복무 중 · 2년 남음');
+    expect(view({ yearsInCareer: 3, boundUntil: 3 })).not.toContain('복무 중');
+  });
+  it('엔딩 화면과 공유 카드에 기본이 아닌 학력만 나온다', async () => {
+    const { cardData } = await import('./shareCard');
+    const { EndingScreen } = await import('./screens/EndingScreen');
+    const { makeState } = await import('../engine/testing');
+    const ended = (education?: string, service?: string) => {
+      const g = newGame({ name: '출신', position: 'backend', route: 'commerce', candidate: 0, education, service }, 1, CONTENT);
+      return { ...g, state: makeState({ retired: true, endingId: 'ordinary' }), queue: [{ kind: 'ended' as const }] };
+    };
+    const hs = ended('highschool', 'industrial');
+    expect(cardData(hs).who).toContain('고졸·전문대');
+    expect(cardData(hs).who).not.toContain('산업기능요원');
+    expect(renderToString(<EndingScreen game={hs} onRestart={() => {}} />)).toContain('고졸·전문대');
+    expect(cardData(ended()).who).not.toContain('4년제');
+    expect(cardData(ended('university', 'active')).who).not.toContain('4년제');
+  });
+});
+
 describe('지원 호출', () => {
   it('주 담당이 아닌 장애면 콘솔에 지원 호출 라벨이 나온다', async () => {
     const { IncidentConsole } = await import('./console/IncidentConsole');
