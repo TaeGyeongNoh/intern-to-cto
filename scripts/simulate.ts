@@ -1,11 +1,13 @@
 import { CONTENT } from '../src/content';
-import { simulate, type SimPolicy } from '../src/engine/simulate';
+import { SIM_POLICIES, simulate, type SimPolicy } from '../src/engine/simulate';
 import { POSITION_IDS } from '../src/engine/types';
 
 const n = Number(process.argv[2] ?? 1000);
-const POLICIES: SimPolicy[] = ['random', 'skilled', 'loyal'];
-const policy = (process.argv[3] ?? 'random') as SimPolicy;
-if (!POLICIES.includes(policy)) throw new Error(`unknown policy ${policy} (${POLICIES.join(' | ')})`);
+// 정책은 세 번째 인자 또는 --policy <이름>
+const args = process.argv.slice(3);
+const flag = args.indexOf('--policy');
+const policy = (flag >= 0 ? args[flag + 1] : args[0] ?? 'random') as SimPolicy;
+if (!SIM_POLICIES.includes(policy)) throw new Error(`unknown policy ${policy} (${SIM_POLICIES.join(' | ')})`);
 const r = simulate(n, CONTENT, 1, policy);
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
@@ -15,6 +17,9 @@ console.log(`장애 해결률: 단서 0개 ${pct(r.resolveRate.noClue)} / 단서
 const won = (x: number) => `${x.toLocaleString('ko-KR')}만원`;
 console.log(`연봉: 10년차 중앙값 ${won(r.salaryYear10Median)} · 최고연봉 중앙값 ${won(r.maxSalary.median)} / p90 ${won(r.maxSalary.p90)} / 최대 ${won(r.maxSalary.max)}`);
 console.log(`자산: 은퇴 순자산 중앙값 ${won(r.assets.median)} / p90 ${won(r.assets.p90)} · 주거 자기 자금 포함 ${won(r.assetsWithHousing.median)} / ${won(r.assetsWithHousing.p90)} · 판당 구매 ${r.avgPurchases.toFixed(1)}건 · 전세 ${pct(r.jeonseRate)} · 내 집 마련 ${pct(r.houseRate)}`);
+const iv = r.invest;
+console.log(`투자: 판당 ${iv.perGame.toFixed(1)}회 (투자한 판 ${pct(iv.rate)}) · 단계 맛보기 ${pct(iv.tierShare[0])} / 진심 ${pct(iv.tierShare[1])} / 풀매수 ${pct(iv.tierShare[2])} · 풀매수 파산(자산 1,000만원 미만) 판당 ${iv.allInBustPerGame.toFixed(2)}회`);
+console.log(`투자 손익(투자한 판): p10 ${won(iv.net.p10)} / 중앙값 ${won(iv.net.median)} / p90 ${won(iv.net.p90)} · 음수 ${pct(iv.negShare)} · 코인 산 판 중 코인 손실 ${pct(iv.coinNegShare)} · ETF만 산 판 중 손실 ${pct(iv.etfOnlyNegShare)}`);
 console.log(`이벤트: 판당 ${r.avgEvents.toFixed(1)}건 · 반복 비율 ${pct(r.repeatShare)}`);
 const cl = r.companyLife;
 console.log(`회사 생활: 판당 협상 ${cl.negotiationsPerGame.toFixed(1)}회 (더 요구 성공 ${pct(cl.negotiateWinRate)}) · 승진 보류 ${cl.promotionHeldPerGame.toFixed(2)}회 · 상장 ${pct(cl.ipoRate)} · 폐업 ${pct(cl.shutdownRate)} · 스톡옵션 행사 ${pct(cl.stockPayoutRate)} (중앙값 ${won(cl.stockPayoutMedian)})`);

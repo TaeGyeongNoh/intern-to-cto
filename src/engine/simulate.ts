@@ -3,6 +3,7 @@ import { IPO_MULT } from './company';
 import { actionChance } from './incident';
 import { serviceAllowed } from './origin';
 import { createRng, type Rng } from './rng';
+import { shopChoices, STAKE_TIERS } from './shop';
 import { RETIRE_AGE } from './season';
 import { ROUTE_IDS, type Content, type PositionId } from './types';
 
@@ -11,8 +12,13 @@ import { ROUTE_IDS, type Content, type PositionId } from './types';
  * - random: 유효한 입력을 무작위로 고른다.
  * - skilled: 장애에서 열려 있는 정답 뷰를 고르고, 성공 확률이 가장 높은 조치를 고른다. 나머지는 무작위.
  * - loyal: 이직 제안을 항상 거절한다(회사가 문을 닫아 남을 수 없으면 첫 제안). 나머지는 무작위.
+ * - greedy: 상점에서 상승장이면 ETF(dev-stock)를 풀매수하고 그 밖의 해는 지갑을 닫는다. 투자 착취 전략의 상한. 나머지는 무작위.
+ * 상점은 (greedy가 아니면) 물건 단위로 먼저 고르고, 투자 물건이면 금액 단계를 고른다. 단계가 펼쳐진 만큼 투자를 과하게 고르지 않게.
  */
-export type SimPolicy = 'random' | 'skilled' | 'loyal';
+export type SimPolicy = 'random' | 'skilled' | 'loyal' | 'greedy';
+export const SIM_POLICIES: readonly SimPolicy[] = ['random', 'skilled', 'loyal', 'greedy'];
+/** greedy 정책이 상승장에 풀매수하는 물건 */
+export const GREEDY_ITEM = 'dev-stock';
 
 export type SimReport = {
   games: number;
@@ -34,8 +40,26 @@ export type SimReport = {
   houseRate: number;
   /** 전세(jeonse)를 산 판의 비율 (내 집 포함) */
   jeonseRate: number;
-  /** 판당 평균 상점 구매 수 */
+  /** 판당 평균 상점 구매 수 (투자 포함) */
   avgPurchases: number;
+  /** 투자 */
+  invest: {
+    perGame: number;
+    /** 금액 단계별 비율 (맛보기 · 진심 · 풀매수) */
+    tierShare: number[];
+    /** 투자를 한 번 이상 한 판 비율 */
+    rate: number;
+    /** 만원. 누적 투자 손익 (투자한 판만) */
+    net: { p10: number; median: number; p90: number };
+    /** 투자한 판 중 누적 손익이 음수로 끝난 비율 */
+    negShare: number;
+    /** 코인을 한 번 이상 산 판 중 코인 손익이 음수인 비율 */
+    coinNegShare: number;
+    /** ETF만 산 판 중 손익이 음수인 비율 */
+    etfOnlyNegShare: number;
+    /** 판당 풀매수 실패 직후 자산 1,000만원 미만 횟수 */
+    allInBustPerGame: number;
+  };
   /** 시작 유형별 판 수·평균 연차·엔딩 분포 */
   byArchetype: Record<string, { games: number; avgYears: number; endings: Record<string, number> }>;
   /** 출신 조합별 ('{education}/{service}') 판 수·평균 연차·첫 해 연말 연봉·최고연봉 중앙값·엔딩 분포 */
@@ -120,6 +144,17 @@ export const TOP_ENDINGS = ['cto', 'vp', 'principal'];
 function chooseInput(g: Game, c: Content, player: Rng, policy: SimPolicy): Input {
   const p = pending(g);
   const valid = validInputs(g, c);
+  if (p.kind === 'shop') {
+    const choices = shopChoices(p.items, g.state, c);
+    if (policy === 'greedy') {
+      const i = g.state.market === 'bull' ? choices.findIndex((x) => x.itemId === GREEDY_ITEM && x.tier === STAKE_TIERS.length - 1) : -1;
+      return { t: 'pick', i: i >= 0 ? i : choices.length };
+    }
+    const which = player.pick([...p.items, null]);
+    if (which === null) return { t: 'pick', i: choices.length };
+    const idx = choices.flatMap((x, i) => (x.itemId === which ? [i] : []));
+    return { t: 'pick', i: player.pick(idx) };
+  }
   if (policy === 'loyal' && p.kind === 'offers') return { t: 'pick', i: p.forced ? 0 : p.offers.length };
   if (policy === 'skilled' && p.kind === 'incident-step') {
     const opts = c.incidents[p.incidentId].steps[p.step].options;
@@ -145,6 +180,7 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   const maxSalaries: number[] = [];
   const assets: number[] = [];
   let houses = 0;
+  const inv = { count: 0, tiers: STAKE_TIERS.map(() => 0), games: 0, nets: [] as number[], coinGames: 0, coinNeg: 0, etfOnly: 0, etfOnlyNeg: 0, busts: 0 };
   let jeonses = 0;
   const withHousing: number[] = [];
   let purchases = 0;
@@ -188,9 +224,23 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
       if (!was && now) preFound = before.state.salary;
       if (was && !now && preFound > 0) fd.reentry.push(after.state.salary / preFound);
     };
+    const net: Record<string, number> = {};
     for (let guard = 0; pending(g).kind !== 'ended'; guard++) {
       if (guard > 3000) throw new Error(`game seed=${seed} did not end`);
       const p = pending(g);
+      if (p.kind === 'shop') {
+        const input = chooseInput(g, c, player, policy);
+        const ch = input.t === 'pick' ? shopChoices(p.items, g.state, c)[input.i] : undefined;
+        const next = apply(g, input, c);
+        if (ch?.tier !== undefined) {
+          inv.count++;
+          inv.tiers[ch.tier]++;
+          net[ch.itemId] = (net[ch.itemId] ?? 0) + next.state.assets - g.state.assets;
+          if (ch.tier === STAKE_TIERS.length - 1 && !next.outcome?.ok && next.state.assets < 1000) inv.busts++;
+        }
+        g = next;
+        continue;
+      }
       if (p.kind === 'event' && g.state.yearsInCareer > 0) {
         events++;
         if (seen.has(p.eventId)) repeats++;
@@ -261,6 +311,19 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     maxSalaries.push(g.state.maxSalary);
     assets.push(g.state.assets);
     if (g.state.purchases.includes('house')) houses++;
+    const investedIds = Object.keys(net);
+    if (investedIds.length > 0) {
+      inv.games++;
+      inv.nets.push(g.state.investNet);
+      if ('coin' in net) {
+        inv.coinGames++;
+        if (net.coin < 0) inv.coinNeg++;
+      }
+      if (investedIds.length === 1 && investedIds[0] === 'dev-stock') {
+        inv.etfOnly++;
+        if (net['dev-stock'] < 0) inv.etfOnlyNeg++;
+      }
+    }
     if (g.state.purchases.includes('jeonse')) jeonses++;
     withHousing.push(g.state.assets + HOUSING_ITEMS.reduce((sum, id) => sum + (g.state.purchases.includes(id) ? c.shop[id]?.price ?? 0 : 0), 0));
     purchases += g.state.purchases.length;
@@ -312,6 +375,16 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     houseRate: houses / n,
     jeonseRate: jeonses / n,
     avgPurchases: purchases / n,
+    invest: {
+      perGame: inv.count / n,
+      tierShare: inv.tiers.map((k) => (inv.count ? k / inv.count : 0)),
+      rate: inv.games / n,
+      net: { p10: quantile(inv.nets, 0.1), median: quantile(inv.nets, 0.5), p90: quantile(inv.nets, 0.9) },
+      negShare: rate([inv.nets.filter((x) => x < 0).length, inv.games]),
+      coinNegShare: rate([inv.coinNeg, inv.coinGames]),
+      etfOnlyNegShare: rate([inv.etfOnlyNeg, inv.etfOnly]),
+      allInBustPerGame: inv.busts / n,
+    },
     byArchetype,
     byOrigin: Object.fromEntries([...originAgg].map(([key, a]) => [key, { games: a.games, avgYears: a.years / a.games, firstSalaryMedian: quantile(a.first, 0.5), maxSalaryMedian: quantile(a.max, 0.5), endings: a.endings }])),
     byEducation: Object.fromEntries([...eduAgg].filter(([, a]) => a.games > 0).map(([key, a]) => [key, {
