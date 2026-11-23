@@ -32,7 +32,7 @@ export function runYear(s: GameState, rng: Rng, c: Content): { state: GameState;
   const stats = { ...s.stats };
 
   const potentialFactor = before >= s.potential ? 0.1 : 1;
-  const points = Math.round((18 + rng.int(0, 8)) * ageFactor(s.age, s.growthType) * ROLE_FACTOR[role] * potentialFactor);
+  const points = Math.round((13 + rng.int(0, 6)) * ageFactor(s.age, s.growthType) * ROLE_FACTOR[role] * potentialFactor);
   const w = POSITION_WEIGHTS[s.position];
   const items = STAT_IDS.map((id) => ({ item: id, weight: w[id] + 0.05 }));
   for (let k = 0; k < points; k++) {

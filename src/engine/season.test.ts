@@ -31,6 +31,14 @@ describe('runYear', () => {
     const s = makeState({ potential: 95 });
     expect(total(runYear(s, createRng(2), CONTENT).state.stats)).toBeGreaterThan(total(s.stats));
   });
+  it('젊은 메인 역할의 한 해 성장 포인트는 13~19 (시니어까지 7년 안팎)', () => {
+    for (let seed = 1; seed < 60; seed++) {
+      const s = makeState({ potential: 95, age: 24, growthType: 'normal' });
+      const gain = total(runYear(s, createRng(seed), CONTENT).state.stats) - total(s.stats);
+      expect(gain).toBeGreaterThanOrEqual(13);
+      expect(gain).toBeLessThanOrEqual(19);
+    }
+  });
   it('쇠퇴 나이 이후엔 능력치 합이 줄어든다', () => {
     const s = makeState({ age: 45, growthType: 'normal' });
     expect(total(runYear(s, createRng(3), CONTENT).state.stats)).toBeLessThan(total(s.stats));
@@ -78,7 +86,7 @@ describe('review', () => {
     expect(r.state.record.story.join('\n')).not.toContain('승진');
   });
   it('실제로 직급이 오르면 승진으로 기록한다', () => {
-    const s = makeState({ title: '주니어', stats: { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 } });
+    const s = makeState({ title: '주니어', yearsInCareer: 8, stats: { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 } });
     const r = review(s, createRng(9), CONTENT);
     expect(r.state.title).not.toBe('주니어');
     expect(r.feed.join('\n')).toContain(`${withJosa(r.state.title, '(으)로')} 승진!`);

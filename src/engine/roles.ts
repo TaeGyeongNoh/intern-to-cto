@@ -18,15 +18,15 @@ export const CTO_TIERS: readonly Tier[] = ['large', 'bigtech'];
 /** 직급 조건. 표는 위에서부터 첫 매치가 그 직급이다 */
 export type TitleRule = { title: string; minOvr: number; minReputation?: number; minCareerYear?: number; tiers?: readonly Tier[] };
 export const IC_RULES: readonly TitleRule[] = [
-  { title: '프린시펄', minOvr: 85 },
-  { title: '스태프', minOvr: 75 },
-  { title: '시니어', minOvr: 65 },
+  { title: '프린시펄', minOvr: 85, minCareerYear: 15 },
+  { title: '스태프', minOvr: 78, minCareerYear: 10 },
+  { title: '시니어', minOvr: 65, minCareerYear: 7 },
   { title: '미드레벨', minOvr: 55, minCareerYear: 3 },
   { title: '주니어', minOvr: 0 },
 ];
 export const MGMT_RULES: readonly TitleRule[] = [
-  { title: 'CTO', minOvr: 85, minReputation: 85, tiers: CTO_TIERS },
-  { title: 'VP of Engineering', minOvr: 80, minReputation: 70 },
+  { title: 'CTO', minOvr: 85, minReputation: 85, minCareerYear: 15, tiers: CTO_TIERS },
+  { title: 'VP of Engineering', minOvr: 80, minReputation: 70, minCareerYear: 12 },
   { title: '팀장', minOvr: 0 },
 ];
 /** 조건을 채워도 그 해 별점이 이보다 낮으면 승진이 보류된다 */
