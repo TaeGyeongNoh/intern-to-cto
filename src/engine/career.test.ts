@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
+import { LEGEND_FAST } from '../content/endings';
 import { determineEnding, generateOffers, joinCompany, scoutEligible } from './career';
 import { createRng } from './rng';
 import { marketSalary } from './salary';
@@ -101,5 +102,26 @@ describe('determineEnding', () => {
   it('기본값: 한 회사면 원컴퍼니맨, 아니면 평범한 행복', () => {
     expect(determineEnding(makeState(), CONTENT).id).toBe('one-company');
     expect(determineEnding(makeState({ companiesWorked: ['a', 'b'] }), CONTENT).id).toBe('ordinary');
+  });
+  describe('전설의 SRE: 빠른 복구 횟수와 해결률', () => {
+    const base = makeState({ companiesWorked: ['a', 'b'] });
+    const withRecord = (position: 'sre' | 'backend', fastResolves: number, resolved: number, total: number) =>
+      makeState({ position, companiesWorked: ['a', 'b'], record: { ...base.record, fastResolves, incidentsResolved: resolved, incidentsTotal: total } });
+    it('SRE, 빠른 복구 LEGEND_FAST건, 해결률 0.7이면 전설의 SRE', () => {
+      expect(determineEnding(withRecord('sre', LEGEND_FAST, 70, 100), CONTENT).id).toBe('legend-sre');
+    });
+    it('빠른 복구가 하나 모자라면 아니다', () => {
+      expect(determineEnding(withRecord('sre', LEGEND_FAST - 1, 70, 100), CONTENT).id).toBe('ordinary');
+    });
+    it('backend는 같은 기록이어도 아니다', () => {
+      expect(determineEnding(withRecord('backend', LEGEND_FAST, 70, 100), CONTENT).id).toBe('ordinary');
+    });
+    it('해결률 0.69면 아니다', () => {
+      expect(determineEnding(withRecord('sre', LEGEND_FAST, 69, 100), CONTENT).id).toBe('ordinary');
+    });
+    it('평균 MTTR은 조건이 아니다 (초반 기록이 벌이 되지 않는다)', () => {
+      const s = withRecord('sre', LEGEND_FAST, 70, 100);
+      expect(determineEnding({ ...s, record: { ...s.record, mttrTotalMin: 600 * 100 } }, CONTENT).id).toBe('legend-sre');
+    });
   });
 });
