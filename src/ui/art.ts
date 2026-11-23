@@ -50,6 +50,8 @@ export const ENDING_ART: Record<string, string> = {
   'one-company': endOneCompany, ordinary: endOrdinary,
   // 흔한 끝 엔딩은 기존 그림을 재사용한다
   staff: endPrincipal, 'team-lead': evLead, 'veteran-senior': endOneCompany,
+  // 자발적 은퇴: 파이어족은 쉬는 그림, 다른 길은 새 출발(취준) 그림
+  fire: evBurnout, 'new-path': evPrologue,
 };
 
 const EVENT_ART: Record<string, string> = {
