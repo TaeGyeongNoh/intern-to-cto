@@ -72,4 +72,23 @@ describe('simulate', () => {
     expect(r.companyLife.promotionHeldPerGame).toBeGreaterThan(0);
     expect(r.companyLife.shutdownRate).toBeGreaterThan(0);
   });
+  it('현실성: 연말 별점 분포를 낸다', () => {
+    const r = simulate(100, CONTENT);
+    const shares = [1, 2, 3, 4, 5].map((k) => r.realism.ratingShare[k]);
+    expect(shares.every((x) => x >= 0 && x <= 1)).toBe(true);
+    expect(shares.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+  });
+  it('창업 지표를 낸다', () => {
+    const r = simulate(400, CONTENT);
+    const f = r.founder;
+    expect(f.rate).toBeGreaterThan(0);
+    expect(f.rate).toBeLessThan(1);
+    expect(f.exitShare).toBeGreaterThanOrEqual(0);
+    expect(f.exitShare).toBeLessThanOrEqual(1);
+    expect(f.survive5).toBeGreaterThan(0);
+    expect(f.avgYears).toBeGreaterThanOrEqual(1);
+    expect(f.salaryMedian).toBeGreaterThan(0);
+    expect(f.reentryRatio).toBeGreaterThan(0);
+    expect(f.activeAtRetire).toBeGreaterThanOrEqual(0);
+  });
 });

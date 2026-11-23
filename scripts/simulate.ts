@@ -44,6 +44,10 @@ for (const p of POSITION_IDS) {
 console.log('현실성: 나이별 연말 연봉 (판 수 · 중앙값 / p90 · 1억 이상 · 2억 이상)');
 for (const [age, x] of Object.entries(r.realism.salaryByAge))
   console.log(`  ${age}세 ${String(x.n).padStart(5)}판 · ${won(x.median)} / ${won(x.p90)} · ${pct(x.over1eok)} · ${pct(x.over2eok)}`);
+const rs = r.realism.ratingShare;
+console.log(`현실성: 연말 별점 분포 5점 ${pct(rs[5])} · 4점 ${pct(rs[4])} · 3점 ${pct(rs[3])} · 2점 ${pct(rs[2])} · 1점 ${pct(rs[1])}`);
+const f = r.founder;
+console.log(`현실성: 창업 ${pct(f.rate)} · 창업자 중 엑싯 ${pct(f.exitShare)} · 5년 생존 ${pct(f.survive5)} · 평균 ${f.avgYears.toFixed(1)}년 · 창업 중 연봉 중앙값 ${won(f.salaryMedian)} · 재취업 연봉/창업 직전 ${f.reentryRatio.toFixed(2)} · 은퇴 때 창업 중 ${pct(f.activeAtRetire)}`);
 console.log('현실성: 연차별 직급 분포');
 for (const [y, tally] of Object.entries(r.realism.titleByYear)) {
   const row = Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([t, v]) => `${t} ${pct(v)}`).join(', ');

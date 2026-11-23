@@ -2,6 +2,7 @@ import { apply, newGame, pending, validInputs, type Game, type Input } from './g
 import { IPO_MULT } from './company';
 import { actionChance } from './incident';
 import { createRng, type Rng } from './rng';
+import { RETIRE_AGE } from './season';
 import { ROUTE_IDS, type Content, type PositionId } from './types';
 
 /**
@@ -59,6 +60,25 @@ export type SimReport = {
     salaryByAge: Record<number, { n: number; median: number; p90: number; over1eok: number; over2eok: number }>;
     /** 커리어 N년차 연말 직급 비율 */
     titleByYear: Record<number, Record<string, number>>;
+    /** 연말 별점(1~5) 비율, 모든 판의 모든 해 */
+    ratingShare: Record<number, number>;
+  };
+  /** 창업 루트 */
+  founder: {
+    /** 창업한 판 비율 */
+    rate: number;
+    /** 창업자 중 엑싯 비율 */
+    exitShare: number;
+    /** 창업 5년 생존(엑싯 포함). 창업 뒤 5년 이상 일할 수 있었던 창업자만 */
+    survive5: number;
+    /** 창업 회사에서 보낸 평균 연수 */
+    avgYears: number;
+    /** 만원. 창업 중 연말 연봉 중앙값 */
+    salaryMedian: number;
+    /** 폐업 후 첫 연봉 / 창업 직전 연봉, 중앙값 */
+    reentryRatio: number;
+    /** 창업자 중 은퇴 때 아직 창업 중인 비율 */
+    activeAtRetire: number;
   };
 };
 
@@ -120,12 +140,22 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   const payouts: number[] = [];
   const byAge = new Map<number, number[]>(REALISM_AGES.map((a) => [a, []]));
   const byYear = new Map<number, Record<string, number>>(REALISM_YEARS.map((y) => [y, {}]));
+  const ratings = [0, 0, 0, 0, 0, 0];
+  const fd = { games: 0, exits: 0, eligible5: 0, survived5: 0, years: 0, active: 0, salaries: [] as number[], reentry: [] as number[] };
+  const isFounderCo = (id: string) => !!c.companies[id]?.founder;
 
   for (let k = 0; k < n; k++) {
     const seed = seed0 + k;
     const player = createRng((seed * 7919 + 13) >>> 0);
     let g = newGame({ name: 'sim', position: player.pick(POSITIONS), route: player.pick(ROUTE_IDS), candidate: player.int(0, 2) }, seed, c);
     const seen = new Set<string>();
+    let preFound = 0;
+    const track = (before: Game, after: Game) => {
+      const was = isFounderCo(before.state.companyId);
+      const now = isFounderCo(after.state.companyId);
+      if (!was && now) preFound = before.state.salary;
+      if (was && !now && preFound > 0) fd.reentry.push(after.state.salary / preFound);
+    };
     for (let guard = 0; pending(g).kind !== 'ended'; guard++) {
       if (guard > 3000) throw new Error(`game seed=${seed} did not end`);
       const p = pending(g);
@@ -139,6 +169,7 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
         negotiations++;
         if (input.t === 'pick' && input.i === 1) {
           const next = apply(g, input, c);
+          track(g, next);
           asks[0] += next.outcome?.ok ? 1 : 0;
           asks[1] += 1;
           g = next;
@@ -148,7 +179,9 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
       const stock = g.state.stock;
       if (p.kind === 'incident-action') {
         const before = g.state.record.incidentsResolved;
+        const prev = g;
         g = apply(g, input, c);
+        track(prev, g);
         const bucket = p.clues === 0 ? agg.noClue : agg.withClues;
         bucket[0] += g.state.record.incidentsResolved > before ? 1 : 0;
         bucket[1] += 1;
@@ -156,7 +189,9 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
         if (stock && !g.state.stock && isIpo(g.state, stock.companyId, c)) payouts.push(stock.value * IPO_MULT);
         continue;
       }
+      const prev = g;
       g = apply(g, input, c);
+      track(prev, g);
       held += g.feed.filter((l) => l.startsWith('승진 보류')).length;
       if (stock && !g.state.stock && isIpo(g.state, stock.companyId, c)) payouts.push(stock.value * IPO_MULT);
     }
@@ -168,7 +203,23 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     years += y;
     maxYears = Math.max(maxYears, y);
     incidents += g.state.record.incidentsTotal;
-    for (const h of g.state.record.history) byAge.get(h.age)?.push(h.salary);
+    for (const h of g.state.record.history) {
+      byAge.get(h.age)?.push(h.salary);
+      ratings[h.rating] += 1;
+    }
+    const fRows = g.state.record.history.filter((h) => isFounderCo(h.companyId));
+    if (fRows.length > 0) {
+      const exited = g.state.flags.includes('exit');
+      fd.games += 1;
+      fd.exits += exited ? 1 : 0;
+      fd.years += fRows.length;
+      fd.salaries.push(...fRows.map((h) => h.salary));
+      if (isFounderCo(g.state.companyId) && !exited) fd.active += 1;
+      if (RETIRE_AGE + 1 - fRows[0].age >= 5) {
+        fd.eligible5 += 1;
+        fd.survived5 += exited || fRows.length >= 5 ? 1 : 0;
+      }
+    }
     for (const [y, tally] of byYear) {
       const h = g.state.record.history[y - 1];
       if (h) tally[h.title] = (tally[h.title] ?? 0) + 1;
@@ -199,6 +250,7 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
       const total = Object.values(tally).reduce((a, b) => a + b, 0);
       return [y, Object.fromEntries(Object.entries(tally).map(([k, v]) => [k, v / total]))];
     })),
+    ratingShare: Object.fromEntries([1, 2, 3, 4, 5].map((k) => [k, rate([ratings[k], ratings.reduce((a, b) => a + b, 0)])])),
   };
   return {
     games: n,
@@ -218,6 +270,15 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     avgEvents: events / n,
     repeatShare: events ? repeats / events : 0,
     realism,
+    founder: {
+      rate: fd.games / n,
+      exitShare: rate([fd.exits, fd.games]),
+      survive5: rate([fd.survived5, fd.eligible5]),
+      avgYears: fd.games ? fd.years / fd.games : 0,
+      salaryMedian: quantile(fd.salaries, 0.5),
+      reentryRatio: quantile(fd.reentry, 0.5),
+      activeAtRetire: rate([fd.active, fd.games]),
+    },
     companyLife: {
       negotiationsPerGame: negotiations / n,
       negotiateWinRate: rate(asks),
