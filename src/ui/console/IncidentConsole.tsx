@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { CONTENT } from '../../content';
 import { CARDS, VIEW_LABELS } from '../../content/cards';
 import { pending, validInputs, type Game, type Input } from '../../engine/game';
-import { actionChance } from '../../engine/incident';
+import { actionChance, isOffRole } from '../../engine/incident';
+import { POSITION_LABELS } from '../../engine/stats';
 import type { CardDef, IncidentOption, ViewId } from '../../engine/types';
 import { Button, CardIcon } from '../components/Icon';
-import { ChevronLeft, ChevronRight, ChevronUp, IconText, Lock, Search, Siren, Sparkles, Wrench } from '../components/Icons';
+import { ChevronLeft, ChevronRight, ChevronUp, IconText, LifeBuoy, Lock, Search, Siren, Sparkles, Wrench } from '../components/Icons';
 import { pct } from '../screens/format';
 import { AIDrawer, type AIChip, type AIMessage } from './AIDrawer';
 import { WIDGETS } from './widgets';
@@ -61,6 +62,8 @@ export function IncidentConsole({ game, onInput }: { game: Game; onInput: (i: In
   const canAsk = valid.some((v) => v.t === 'ask');
   const hasAI = st.deck.includes('whatap-ai');
   const total = inc.steps.length;
+  const offRole = isOffRole(inc, st.position);
+  const owners = (inc.positions ?? []).map((id) => POSITION_LABELS[id]).join('·');
 
   // 사이드바와 상단 문구는 inspect 중이면 방금 고른 단계를 기준으로 그린다
   const shownStep = inspect ? inspect.step : p.kind === 'incident-step' ? p.step : null;
@@ -164,6 +167,11 @@ export function IncidentConsole({ game, onInput }: { game: Game; onInput: (i: In
         </nav>
 
         <main className={s.main}>
+          {offRole && (
+            <div className={s.offRole}>
+              <IconText icon={LifeBuoy} tone="warning" size={14}>지원 호출 · {owners} 장애에 불려 왔다</IconText>
+            </div>
+          )}
           {p.kind === 'incident-step' && p.step === 0 && !inspect && (
             <div className={s.alarm} role="alert">
               <span className={s.alarmBadge}>CRITICAL</span>

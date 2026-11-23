@@ -50,3 +50,14 @@ describe('유형 표시', () => {
     expect(cardData(g).who).toContain(name);
   });
 });
+
+describe('지원 호출', () => {
+  it('주 담당이 아닌 장애면 콘솔에 지원 호출 라벨이 나온다', async () => {
+    const { IncidentConsole } = await import('./console/IncidentConsole');
+    const g = newGame({ name: '지원', position: 'frontend', route: 'finance', candidate: 0 }, 1, CONTENT);
+    const game = { ...g, queue: [{ kind: 'incident-step' as const, incidentId: 'db-lock', step: 0, clues: 0, hintUsed: false, order: [0, 1, 2] }] };
+    const html = renderToString(<IncidentConsole game={game} onInput={() => {}} />);
+    expect(html).toContain('지원 호출');
+    expect(html).toContain('백엔드');
+  });
+});

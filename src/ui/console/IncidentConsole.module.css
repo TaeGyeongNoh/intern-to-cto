@@ -169,3 +169,5 @@
 @media (prefers-reduced-motion: reduce) {
   .root, .vignette, .alarm, .inspect, .actions, .guideArrow, .liveDot { animation: none; }
 }
+
+.offRole { margin-bottom: 8px; padding: 6px 10px; border-radius: var(--radius-m); font-size: 12px; font-weight: 700; color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); }

@@ -32,6 +32,7 @@ import {
   House as LHouse,
   Inbox as LInbox,
   Landmark as LLandmark,
+  LifeBuoy as LLifeBuoy,
   Link as LLink,
   Lock as LLock,
   Megaphone as LMegaphone,
@@ -114,6 +115,7 @@ export const House = make(LHouse, 'House');
 export const Inbox = make(LInbox, 'Inbox');
 export const Landmark = make(LLandmark, 'Landmark');
 export const Link = make(LLink, 'Link');
+export const LifeBuoy = make(LLifeBuoy, 'LifeBuoy');
 export const Lock = make(LLock, 'Lock');
 export const Megaphone = make(LMegaphone, 'Megaphone');
 export const MessageCircle = make(LMessageCircle, 'MessageCircle');
