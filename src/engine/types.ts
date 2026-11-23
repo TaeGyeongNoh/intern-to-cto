@@ -249,6 +249,36 @@ export type GameState = {
   boundUntil: number;
 };
 
+/** 출신(학력). 기본값(DEFAULT_EDUCATION)은 효과가 없어야 한다 (옛 저장·공유 링크 호환) */
+export type Education = {
+  id: string;
+  name: string;
+  tagline: string;
+  /** 병역 전 시작 나이 */
+  age: number;
+  /** 시작할 때 한 번 적용: stats, reputation, flags, story만 허용 */
+  effects?: Effects;
+  /** 첫 연봉 가감(만원). 프롤로그로 첫 회사가 정해진 뒤 첫 해를 넘길 때 적용 */
+  salary?: number;
+  /** 프롤로그 첫 이벤트. 없으면 PROLOGUE_START */
+  prologue?: string;
+};
+
+/** 병역. 기본값(DEFAULT_SERVICE)은 효과가 없어야 한다 */
+export type Service = {
+  id: string;
+  name: string;
+  tagline: string;
+  /** 시작 나이에 더하는 햇수 */
+  years: number;
+  effects?: Effects;
+  salary?: number;
+  /** 있으면 학력 프롤로그 대신 이걸로 시작 */
+  prologue?: string;
+  /** 이 학력에서만 고를 수 있다. 없으면 모두 */
+  educations?: string[];
+};
+
 export type Ending = { id: string; priority: number; title: string; description: string; check: (s: GameState) => boolean };
 
 export type Content = {
@@ -259,4 +289,6 @@ export type Content = {
   endings: Ending[];
   shop: Record<string, ShopItem>;
   archetypes: Record<string, Archetype>;
+  educations: Record<string, Education>;
+  services: Record<string, Service>;
 };

@@ -1,5 +1,5 @@
 import { resolveCompanyId } from './career';
-import { PROLOGUE_START } from './game';
+import { DEFAULT_EDUCATION, DEFAULT_SERVICE, PROLOGUE_START, serviceAllowed } from './origin';
 import { shopFlag } from './shop';
 import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Condition, type Content, type Effects } from './types';
 
@@ -7,6 +7,8 @@ import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Condition, type Content, type E
 const FOUNDER_COMPANY = 'founder-{route}';
 /** 성장 단계 effects·closeEffects에 쓸 수 있는 필드 (retire는 따로 검사) */
 const STAGE_EFFECT_KEYS = new Set(['stats', 'reputation', 'burnout', 'flags', 'removeFlags', 'traits', 'story', 'retire']);
+/** 출신(학력·병역) effects에 쓸 수 있는 필드. 연봉은 salary 필드로 준다 */
+const ORIGIN_EFFECT_KEYS = new Set(['stats', 'reputation', 'flags', 'story']);
 
 /**
  * 프롤로그에서만 뜨는 이벤트: 시작 이벤트들에서 now로 닿고, scheduledOnly이며,
@@ -39,7 +41,8 @@ export function validateContent(c: Content): string[] {
   const views = new Set<string>(['grep']);
   for (const card of Object.values(c.cards)) for (const v of card.views) views.add(v);
 
-  const targeted = new Set<string>([PROLOGUE_START]);
+  const originPrologues = [...Object.values(c.educations), ...Object.values(c.services)].flatMap((o) => (o.prologue ? [o.prologue] : []));
+  const targeted = new Set<string>([PROLOGUE_START, ...originPrologues]);
   const checkEffects = (where: string, e?: Effects, inEvent = false) => {
     if (!e) return;
     for (const card of e.addCards ?? []) if (!cardIds.has(card)) errs.push(`${where}: unknown card ${card}`);
@@ -101,7 +104,7 @@ export function validateContent(c: Content): string[] {
 
   // `{route}` 회사는 일반 루트에만 있다. 와탭 루트에서 뜨면 회사를 찾지 못하므로 when.route로 막는다.
   // 프롤로그(첫 해 전)는 루트가 항상 일반 루트라 예외: 시작 이벤트에서 now로만 이어지고 next로는 불리지 않는 scheduledOnly 이벤트.
-  const prologueOnly = prologueChain(c, [PROLOGUE_START]);
+  const prologueOnly = prologueChain(c, [PROLOGUE_START, ...originPrologues]);
   for (const ev of Object.values(c.events)) {
     const usesRoute = ev.choices.some((ch) => [ch.effects, ch.failEffects].some((e) => e?.company?.includes('{route}')));
     if (usesRoute && !(ev.when.route?.length) && !prologueOnly.has(ev.id)) errs.push(`event ${ev.id}: {route} company needs when.route`);
@@ -190,5 +193,34 @@ export function validateContent(c: Content): string[] {
     if (n < 3) errs.push(`position ${p}: needs at least 3 incidents`);
   }
   if (!c.endings.some((e) => e.priority === 0)) errs.push('missing fallback ending (priority 0)');
+
+  // 출신: 기본값은 효과가 없어야 옛 저장·공유 링크가 같은 결과로 리플레이된다
+  const checkOrigin = (where: string, e: Effects | undefined, prologue: string | undefined) => {
+    for (const f of Object.keys(e ?? {})) if (!ORIGIN_EFFECT_KEYS.has(f)) errs.push(`${where}: effects.${f} not allowed`);
+    if (prologue === undefined) return;
+    if (!c.events[prologue]) errs.push(`${where}: unknown prologue ${prologue}`);
+    else if (!c.events[prologue].scheduledOnly) errs.push(`${where}: prologue ${prologue} must be scheduledOnly`);
+  };
+  for (const [key, ed] of Object.entries(c.educations)) {
+    const where = `education ${ed.id}`;
+    if (key !== ed.id) errs.push(`education key ${key} != id ${ed.id}`);
+    if (!(Number.isInteger(ed.age) && ed.age >= 18 && ed.age <= 30)) errs.push(`${where}: age must be an integer 18-30`);
+    checkOrigin(where, ed.effects, ed.prologue);
+  }
+  for (const [key, sv] of Object.entries(c.services)) {
+    const where = `service ${sv.id}`;
+    if (key !== sv.id) errs.push(`service key ${key} != id ${sv.id}`);
+    if (!(Number.isInteger(sv.years) && sv.years >= 0 && sv.years <= 3)) errs.push(`${where}: years must be an integer 0-3`);
+    checkOrigin(where, sv.effects, sv.prologue);
+    for (const id of sv.educations ?? []) if (!c.educations[id]) errs.push(`${where}: unknown education ${id}`);
+  }
+  const de = c.educations[DEFAULT_EDUCATION];
+  if (!de) errs.push(`missing default education ${DEFAULT_EDUCATION}`);
+  else if (de.age !== 22 || de.effects || de.salary || de.prologue) errs.push(`education ${de.id}: default must be age 22 with no effects/salary/prologue`);
+  const ds = c.services[DEFAULT_SERVICE];
+  if (!ds) errs.push(`missing default service ${DEFAULT_SERVICE}`);
+  else if (ds.years !== 0 || ds.effects || ds.salary || ds.prologue || ds.educations) errs.push(`service ${ds.id}: default must be 0 years with no effects/salary/prologue/educations`);
+  for (const ed of Object.values(c.educations))
+    if (!Object.values(c.services).some((sv) => serviceAllowed(sv, ed.id))) errs.push(`education ${ed.id}: no service allowed`);
   return errs;
 }

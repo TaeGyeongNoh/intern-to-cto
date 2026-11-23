@@ -7,6 +7,7 @@ import { createRng } from './rng';
 import { FAST_MTTR } from './incident';
 import { RETIRE_AGE } from './season';
 import { makeState } from './testing';
+import { MIN_FIRST_SALARY } from './origin';
 import type { Content, GameEvent } from './types';
 
 const setup: Setup = { name: '테스트', position: 'backend', route: 'commerce', candidate: 0 };
@@ -71,6 +72,100 @@ describe('newGame', () => {
       expect(g1.state.maxSalary).toBeGreaterThanOrEqual(g1.state.salary);
       expect(g1.state.maxSalary).toBe(Math.max(g.state.salary, g1.state.salary));
     }
+  });
+});
+
+describe('출신 (학력·병역)', () => {
+  const withOrigin = (education?: string, service?: string): Setup => ({ ...setup, education, service });
+  /** 프롤로그 선택지를 고정 인덱스로 고른다 (없으면 첫 번째) */
+  const prologueBy = (g: Game, idx: number[]): Game => {
+    let game = g;
+    for (let k = 0; pending(game).kind === 'event'; k++) {
+      if (k > 10) throw new Error('prologue did not end');
+      const valid = validInputs(game, CONTENT);
+      game = apply(game, valid[idx[k] ?? 0] ?? valid[0], CONTENT);
+    }
+    return game;
+  };
+
+  it('호환: 필드 없는 Setup과 기본 출신을 명시한 Setup은 같은 판이다', () => {
+    for (const seed of [1, 7, 42]) {
+      const a = playRandom(seed);
+      const b = playRandom(seed, withOrigin('university', 'none'));
+      expect(b.state).toEqual(a.state);
+      expect(b.rngState).toBe(a.rngState);
+      expect(b.log).toEqual(a.log);
+      expect(a.state.boundUntil).toBe(0);
+    }
+    const g0 = newGame(setup, 3, CONTENT);
+    const g1 = newGame(withOrigin('university', 'none'), 3, CONTENT);
+    expect(g1.queue).toEqual(g0.queue);
+    expect(g1.rngState).toBe(g0.rngState);
+  });
+  it('시작 나이: 고졸 20, 현역은 +2', () => {
+    expect(newGame(withOrigin('highschool'), 1, CONTENT).state.age).toBe(20);
+    expect(newGame(withOrigin('highschool', 'active'), 1, CONTENT).state.age).toBe(22);
+    expect(newGame(withOrigin('switcher', 'active'), 1, CONTENT).state.age).toBe(28);
+    const g = skipPrologue(newGame(withOrigin('grad'), 1, CONTENT));
+    expect(apply(g, { t: 'pick', i: 0 }, CONTENT).state.age).toBe(25);
+  });
+  it('출신 처리는 rng를 쓰지 않는다 (같은 시드면 잠재력·성장형이 같다)', () => {
+    const a = newGame(setup, 9, CONTENT).state;
+    const b = newGame(withOrigin('switcher', 'active'), 9, CONTENT).state;
+    expect([b.potential, b.growthType, b.burnoutProne]).toEqual([a.potential, a.growthType, a.burnoutProne]);
+  });
+  it('학력별 첫 프롤로그, 병역 프롤로그가 우선', () => {
+    expect(pending(newGame(withOrigin('highschool'), 1, CONTENT))).toEqual({ kind: 'event', eventId: 'prologue-highschool' });
+    expect(pending(newGame(withOrigin('university', 'active'), 1, CONTENT))).toEqual({ kind: 'event', eventId: 'prologue-start' });
+    expect(pending(newGame(withOrigin('grad', 'research'), 1, CONTENT))).toEqual({ kind: 'event', eventId: 'prologue-service-research' });
+  });
+  it('현역 문장은 프롤로그가 story를 비운 뒤에도 남는다', () => {
+    const g = newGame(withOrigin('university', 'active'), 1, CONTENT);
+    expect(g.state.record.story).toEqual([`2025년 · ${CONTENT.services.active.effects!.story}`]);
+    const y1 = apply(skipPrologue(g), { t: 'pick', i: 0 }, CONTENT);
+    expect(y1.state.record.story[0]).toContain('현역으로 복무를 마쳤다');
+    expect(y1.state.record.story.join('\n')).toContain('신입으로 입사했다');
+  });
+  it('첫 해를 넘길 때 출신 연봉 가감을 프롤로그 회사 이동 뒤 연봉에 더한다', () => {
+    // 석사 → "연구실 선배 스타트업" (tiny-commerce) → +500
+    const g = prologueBy(newGame(withOrigin('grad'), 1, CONTENT), [1]);
+    expect(g.state.companyId).toBe('tiny-commerce');
+    const base = CONTENT.companies['tiny-commerce'].baseSalary + (CONTENT.educations.grad.salary ?? 0);
+    const y1 = apply(g, { t: 'pick', i: 0 }, CONTENT);
+    const row = y1.state.record.history[0];
+    // 첫 해 연말 평가가 끝났다면 인상분(최대 4%)만큼만 더해지고, 아니면 가감된 첫 연봉 그대로
+    if (row) expect(row.salary - base).toBeGreaterThanOrEqual(0);
+    if (row) expect(row.salary).toBeLessThanOrEqual(Math.round(base * 1.04));
+    else expect(y1.state.salary).toBe(base);
+  });
+  it('출신 감액은 최저임금 수준(MIN_FIRST_SALARY) 아래로 내리지 않는다', () => {
+    // 고졸(-600) + 산업기능요원(-300), 작은 지정업체(3,100) → 2,200이 아니라 2,500
+    const g = prologueBy(newGame(withOrigin('highschool', 'industrial'), 1, CONTENT), [1]);
+    expect(g.state.companyId).toBe('tiny-commerce');
+    const y1 = apply(g, { t: 'pick', i: 0 }, CONTENT);
+    expect(y1.state.record.story.join('\n')).toContain('오늘의떡집에 신입으로 입사했다');
+    expect(y1.state.maxSalary).toBe(MIN_FIRST_SALARY);
+  });
+  it('대체복무 프롤로그를 마치면 3년 묶인다', () => {
+    for (const [ed, sv] of [['university', 'industrial'], ['highschool', 'industrial'], ['grad', 'research']]) {
+      for (const pickIdx of [0, 1]) {
+        const g = prologueBy(newGame(withOrigin(ed, sv), 5, CONTENT), [pickIdx]);
+        expect(g.state.boundUntil).toBe(3);
+      }
+    }
+  });
+  it('대체복무 판은 3년차 연말 전까지 이직 제안이 없다', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const g = playRandom(seed, withOrigin('university', 'industrial'));
+      // 강제 이직(폐업)이 아니면 첫 회사에서 3년은 채운다
+      const first = g.state.record.history.filter((h) => h.companyId === g.state.record.history[0].companyId);
+      const closedEarly = Object.values(g.state.companyStage).includes('closed');
+      if (!closedEarly && g.state.record.history.length >= 3) expect(first.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+  it('모르는 출신은 newGame이 거부한다', () => {
+    expect(() => newGame(withOrigin('phd'), 1, CONTENT)).toThrow();
+    expect(() => newGame(withOrigin('university', 'research'), 1, CONTENT)).toThrow();
   });
 });
 

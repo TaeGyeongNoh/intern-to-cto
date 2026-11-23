@@ -3,6 +3,9 @@ import { CONTENT } from '../content';
 import type { CardId, Company, Content, GrowthStage } from './types';
 import { validateContent } from './validate';
 
+/** 이벤트를 통째로 바꾸는 테스트용: 프롤로그가 없는 기본 출신만 남긴다 */
+const BASIC_ORIGINS = { educations: { university: CONTENT.educations.university }, services: { none: CONTENT.services.none } };
+
 describe('validateContent', () => {
   it('깨진 next 참조를 잡는다', () => {
     const c: Content = {
@@ -10,6 +13,40 @@ describe('validateContent', () => {
       events: { x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { next: 'nope' } }] } },
     };
     expect(validateContent(c).join('\n')).toContain('unknown event nope');
+  });
+  describe('출신 (학력·병역)', () => {
+    const edu = (over: object, id = 'highschool') => ({ ...CONTENT, educations: { ...CONTENT.educations, [id]: { ...CONTENT.educations[id], ...over } } });
+    const svc = (over: object, id = 'active') => ({ ...CONTENT, services: { ...CONTENT.services, [id]: { ...CONTENT.services[id], ...over } } });
+    const errs = (c: Content) => validateContent(c).join('\n');
+    it('기본 출신은 효과가 없어야 한다 (옛 링크 호환)', () => {
+      expect(errs(edu({ age: 23 }, 'university'))).toContain('education university: default must be age 22 with no effects/salary/prologue');
+      expect(errs(edu({ salary: 100 }, 'university'))).toContain('education university: default must be');
+      expect(errs(edu({ prologue: 'prologue-grad' }, 'university'))).toContain('education university: default must be');
+      expect(errs(svc({ years: 1 }, 'none'))).toContain('service none: default must be 0 years with no effects/salary/prologue/educations');
+      expect(errs(svc({ effects: { stats: { mental: 1 } } }, 'none'))).toContain('service none: default must be');
+      expect(errs(svc({ educations: ['grad'] }, 'none'))).toContain('service none: default must be');
+      const { university: _u, ...rest } = CONTENT.educations;
+      expect(errs({ ...CONTENT, educations: rest })).toContain('missing default education university');
+    });
+    it('key와 id 일치, 나이·햇수 범위', () => {
+      expect(errs({ ...CONTENT, educations: { ...CONTENT.educations, foo: CONTENT.educations.grad } })).toContain('education key foo != id grad');
+      expect(errs(edu({ age: 17 }))).toContain('education highschool: age must be an integer 18-30');
+      expect(errs(edu({ age: 20.5 }))).toContain('education highschool: age must be an integer 18-30');
+      expect(errs(svc({ years: 4 }))).toContain('service active: years must be an integer 0-3');
+    });
+    it('출신 effects는 stats, reputation, flags, story만', () => {
+      for (const f of [{ now: 'prologue-result' }, { company: 'tiny-{route}' }, { bound: 3 }, { salary: 100 }, { retire: true }, { addCards: ['apm'] }, { next: 'prologue-result' }, { burnout: 5 }]) {
+        expect(errs(edu({ effects: f }))).toContain(`education highschool: effects.${Object.keys(f)[0]} not allowed`);
+      }
+      expect(errs(svc({ effects: { salary: 1 } }))).toContain('service active: effects.salary not allowed');
+    });
+    it('프롤로그는 존재하는 scheduledOnly 이벤트', () => {
+      expect(errs(edu({ prologue: 'nope' }))).toContain('education highschool: unknown prologue nope');
+      expect(errs(svc({ prologue: 'founder-offer' }))).toContain('service active: prologue founder-offer must be scheduledOnly');
+    });
+    it('병역의 학력 제한은 있는 학력 id', () => {
+      expect(errs(svc({ educations: ['phd'] }))).toContain('service active: unknown education phd');
+    });
   });
   it('bound는 이벤트 선택지에서만, 1~5 정수', () => {
     const ev = (bound: number) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { bound } }] } } });
@@ -27,7 +64,7 @@ describe('validateContent', () => {
     const errs = validateContent(c).join('\n');
     expect(errs).toContain('event x: minYearsAtCompany must be an integer >= 1');
     expect(errs).toContain('shop s: minYearsAtCompany must be an integer >= 1');
-    const ok: Content = { ...CONTENT, events: { x: { id: 'x', when: { minYearsAtCompany: 1 }, text: 'x', choices: [{ label: 'a', effects: {} }] } } };
+    const ok: Content = { ...CONTENT, ...BASIC_ORIGINS, events: { x: { id: 'x', when: { minYearsAtCompany: 1 }, text: 'x', choices: [{ label: 'a', effects: {} }] } } };
     expect(validateContent(ok)).toEqual([]);
   });
   it('requires 없는 선택지가 하나도 없으면 잡는다', () => {
@@ -58,6 +95,7 @@ describe('validateContent', () => {
   it('now로만 닿는 scheduledOnly 이벤트는 괜찮다', () => {
     const c: Content = {
       ...CONTENT,
+      ...BASIC_ORIGINS,
       events: {
         x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { now: 'y' } }] },
         y: { id: 'y', when: {}, scheduledOnly: true, text: 'y', choices: [{ label: 'b', effects: {} }] },

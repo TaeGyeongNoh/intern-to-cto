@@ -5,6 +5,7 @@ import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
 import { actionChance, FAST_MTTR, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
 import { diffState, type Outcome } from './outcome';
+import { applyOrigin, firstSalary, originPrologue, PROLOGUE_START, resolveOrigin } from './origin';
 import { createRng } from './rng';
 import { negotiateChance, negotiatedSalary } from './salary';
 import { review, runYear } from './season';
@@ -56,20 +57,23 @@ export const NEGOTIATE_MIN_RATING = 4;
 /** 협상이 열리는 최소 근속 (입사 첫해 연말은 입사 때 연봉을 정했으니 조정 대상에서 빠진다) */
 export const NEGOTIATE_MIN_YEARS_AT_COMPANY = 2;
 
-/** 첫 해 전에 거치는 취준·인턴 프롤로그의 시작 이벤트 (콘텐츠에 있을 때만) */
-export const PROLOGUE_START = 'prologue-start';
+export { PROLOGUE_START };
 
 const openingLine = (s: GameState, c: Content) => `${c.companies[s.companyId].name}에 신입으로 입사했다.`;
 
 export function newGame(setup: Setup, seed: number, c: Content): Game {
+  const origin = resolveOrigin(setup, c);
   const rng = createRng(seed);
   let state = createInitialState(setup, seed, rng, c);
   const queue: Pending[] = [{ kind: 'year' }];
-  if (c.events[PROLOGUE_START]) {
+  const first = originPrologue(origin);
+  if (c.events[first]) {
     // 입사 문장은 프롤로그로 첫 회사가 정해진 뒤 첫 해를 넘길 때 남긴다
     state = { ...state, record: { ...state.record, story: [] } };
-    queue.unshift({ kind: 'event', eventId: PROLOGUE_START });
+    queue.unshift({ kind: 'event', eventId: first });
   }
+  // 출신 문장("현역 복무")은 story를 비운 뒤에 남긴다. 출신 처리는 rng를 쓰지 않는다
+  state = applyOrigin(state, origin);
   return drain({ setup, seed, rngState: rng.getState(), state, queue, log: [], feed: [] }, c);
 }
 
@@ -125,9 +129,12 @@ export function apply(g: Game, input: Input, c: Content): Game {
 
   switch (p.kind) {
     case 'year': {
-      if (s.yearsInCareer === 0 && !s.record.story.some((line) => line.endsWith(openingLine(s, c)))) {
-        // 프롤로그 중 연봉 변화는 경력 전이므로 최고 연봉 기록은 첫 연봉부터 센다
-        s = { ...s, maxSalary: s.salary, record: { ...s.record, story: [...s.record.story, `${s.year}년 · ${openingLine(s, c)}`] } };
+      if (s.yearsInCareer === 0) {
+        // 첫 회사가 프롤로그로 정해진 뒤 출신 가감을 더한다. 프롤로그 중 연봉 변화는 경력 전이므로 최고 연봉 기록은 첫 연봉부터 센다
+        const salary = firstSalary(s.salary, resolveOrigin(g.setup, c));
+        s = { ...s, salary, maxSalary: salary };
+        if (!s.record.story.some((line) => line.endsWith(openingLine(s, c))))
+          s = { ...s, record: { ...s.record, story: [...s.record.story, `${s.year}년 · ${openingLine(s, c)}`] } };
       }
       const r = runYear(s, rng, c);
       s = r.state;

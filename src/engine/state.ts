@@ -2,7 +2,8 @@ import type { Rng } from './rng';
 import { generateCandidates } from './stats';
 import type { Content, GameState, GrowthType, PositionId, RouteId } from './types';
 
-export type Setup = { name: string; position: PositionId; route: RouteId; candidate: number };
+/** education·service가 없으면 기본 출신(4년제·해당 없음)이다. 옛 저장·공유 링크에는 없다 */
+export type Setup = { name: string; position: PositionId; route: RouteId; candidate: number; education?: string; service?: string };
 
 const POTENTIALS = [62, 68, 72, 76, 80, 85, 90, 95];
 const POTENTIAL_WEIGHTS = [10, 16, 18, 18, 14, 10, 8, 6];
