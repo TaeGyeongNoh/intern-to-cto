@@ -106,6 +106,9 @@ export type Incident = {
 };
 
 export type Tier = 'startup' | 'mid' | 'large' | 'bigtech' | 'whatap';
+export const TIER_LABELS: Record<Tier, string> = {
+  startup: '스타트업', mid: '중견', large: '대기업', bigtech: '빅테크', whatap: '관측성 전문',
+};
 export type Company = {
   id: string;
   name: string;

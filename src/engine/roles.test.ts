@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeTitle, nextTitle, roleFor } from './roles';
+import { computeTitle, nextTitle, nextTitleProgress, roleFor } from './roles';
 import { makeState } from './testing';
 
 describe('roleFor', () => {
@@ -46,5 +46,34 @@ describe('nextTitle', () => {
   });
   it('트랙이 바뀌면 발령', () => {
     expect(nextTitle('프린시펄', '팀장')).toEqual({ title: '팀장', kind: 'assigned' });
+  });
+});
+
+const statsAt = (v: number) => ({ impl: v, design: v, debug: v, infra: v, ai: v, mental: v });
+
+describe('nextTitleProgress', () => {
+  it('시니어 OVR 71이면 스태프까지 OVR 71/75', () => {
+    expect(nextTitleProgress(makeState({ title: '시니어', stats: statsAt(71) }), 'mid')).toEqual({
+      title: '스태프', reqs: [{ label: 'OVR', current: '71', need: '75', ok: false }],
+    });
+  });
+  it('미드레벨은 연차 조건도 보여준다', () => {
+    expect(nextTitleProgress(makeState({ title: '주니어', yearsInCareer: 2, stats: statsAt(60) }), 'mid')).toEqual({
+      title: '미드레벨', reqs: [{ label: 'OVR', current: '60', need: '55', ok: true }, { label: '연차', current: '2', need: '3', ok: false }],
+    });
+  });
+  it('프린시펄·CTO는 다음 직급이 없다', () => {
+    expect(nextTitleProgress(makeState({ title: '프린시펄' }), 'large')).toBeUndefined();
+    expect(nextTitleProgress(makeState({ title: 'CTO', track: 'mgmt' }), 'large')).toBeUndefined();
+  });
+  it('중견 회사 VP의 CTO 조건에 회사 규모 미충족', () => {
+    const p = nextTitleProgress(makeState({ title: 'VP of Engineering', track: 'mgmt', reputation: 90, stats: statsAt(90) }), 'mid');
+    expect(p?.title).toBe('CTO');
+    expect(p?.reqs).toContainEqual({ label: 'OVR', current: '90', need: '85', ok: true });
+    expect(p?.reqs).toContainEqual({ label: '평판', current: '90', need: '85', ok: true });
+    expect(p?.reqs).toContainEqual({ label: '회사 규모', current: '중견', need: '대기업·빅테크', ok: false });
+  });
+  it('트랙이 막 바뀌어 직급이 다른 트랙이면 표시하지 않는다', () => {
+    expect(nextTitleProgress(makeState({ title: '시니어', track: 'mgmt' }), 'mid')).toBeUndefined();
   });
 });
