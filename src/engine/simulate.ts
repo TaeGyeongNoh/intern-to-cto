@@ -1,4 +1,5 @@
 import { apply, newGame, pending, validInputs, type Game, type Input } from './game';
+import { IPO_MULT } from './company';
 import { actionChance } from './incident';
 import { createRng, type Rng } from './rng';
 import { ROUTE_IDS, type Content, type PositionId } from './types';
@@ -7,7 +8,7 @@ import { ROUTE_IDS, type Content, type PositionId } from './types';
  * 시뮬레이션 플레이어 정책.
  * - random: 유효한 입력을 무작위로 고른다.
  * - skilled: 장애에서 열려 있는 정답 뷰를 고르고, 성공 확률이 가장 높은 조치를 고른다. 나머지는 무작위.
- * - loyal: 이직 제안을 항상 거절한다. 나머지는 무작위.
+ * - loyal: 이직 제안을 항상 거절한다(회사가 문을 닫아 남을 수 없으면 첫 제안). 나머지는 무작위.
  */
 export type SimPolicy = 'random' | 'skilled' | 'loyal';
 
@@ -37,6 +38,21 @@ export type SimReport = {
   avgEvents: number;
   /** 비프롤로그 이벤트 중 같은 판에서 이미 본 id가 다시 뜬 비율 */
   repeatShare: number;
+  /** 회사 생활: 협상·승진 보류·성장 */
+  companyLife: {
+    negotiationsPerGame: number;
+    /** '더 요구' 선택의 성공률 */
+    negotiateWinRate: number;
+    promotionHeldPerGame: number;
+    /** 다니던 회사가 상장한 판 비율 */
+    ipoRate: number;
+    /** 다니던 회사가 폐업한 판 비율 */
+    shutdownRate: number;
+    /** 만원. 스톡옵션 행사액 중앙값 (받은 판만) */
+    stockPayoutMedian: number;
+    /** 스톡옵션을 행사한 판 비율 */
+    stockPayoutRate: number;
+  };
   /** 현실성 점검: 나이별 연말 연봉, 연차별 직급 분포 */
   realism: {
     /** 만원. 그 나이 연말 연봉 (그 나이까지 일한 판만) */
@@ -55,12 +71,18 @@ const quantile = (xs: number[], q: number): number => {
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
 };
 
+/** 그 회사가 상장 단계에 있나 */
+const isIpo = (s: Game['state'], id: string, c: Content): boolean => {
+  const k = s.companyStage[id];
+  return typeof k === 'number' && !!c.companies[id].stages?.[k]?.ipo;
+};
+
 const POSITIONS: PositionId[] = ['backend', 'frontend', 'sre', 'ai'];
 
 function chooseInput(g: Game, c: Content, player: Rng, policy: SimPolicy): Input {
   const p = pending(g);
   const valid = validInputs(g, c);
-  if (policy === 'loyal' && p.kind === 'offers') return { t: 'pick', i: p.offers.length };
+  if (policy === 'loyal' && p.kind === 'offers') return { t: 'pick', i: p.forced ? 0 : p.offers.length };
   if (policy === 'skilled' && p.kind === 'incident-step') {
     const opts = c.incidents[p.incidentId].steps[p.step].options;
     const right = valid.find((v) => v.t === 'pick' && opts[v.i].correct);
@@ -90,6 +112,12 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   const byPosition = Object.fromEntries(POSITIONS.map((p) => [p, { games: 0, endings: {} }])) as SimReport['byPosition'];
   let events = 0;
   let repeats = 0;
+  let negotiations = 0;
+  const asks = [0, 0];
+  let held = 0;
+  let ipoGames = 0;
+  let shutdownGames = 0;
+  const payouts: number[] = [];
   const byAge = new Map<number, number[]>(REALISM_AGES.map((a) => [a, []]));
   const byYear = new Map<number, Record<string, number>>(REALISM_YEARS.map((y) => [y, {}]));
 
@@ -107,16 +135,33 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
         seen.add(p.eventId);
       }
       const input = chooseInput(g, c, player, policy);
+      if (p.kind === 'negotiate') {
+        negotiations++;
+        if (input.t === 'pick' && input.i === 1) {
+          const next = apply(g, input, c);
+          asks[0] += next.outcome?.ok ? 1 : 0;
+          asks[1] += 1;
+          g = next;
+          continue;
+        }
+      }
+      const stock = g.state.stock;
       if (p.kind === 'incident-action') {
         const before = g.state.record.incidentsResolved;
         g = apply(g, input, c);
         const bucket = p.clues === 0 ? agg.noClue : agg.withClues;
         bucket[0] += g.state.record.incidentsResolved > before ? 1 : 0;
         bucket[1] += 1;
+        held += g.feed.filter((l) => l.startsWith('승진 보류')).length;
+        if (stock && !g.state.stock && isIpo(g.state, stock.companyId, c)) payouts.push(stock.value * IPO_MULT);
         continue;
       }
       g = apply(g, input, c);
+      held += g.feed.filter((l) => l.startsWith('승진 보류')).length;
+      if (stock && !g.state.stock && isIpo(g.state, stock.companyId, c)) payouts.push(stock.value * IPO_MULT);
     }
+    if (Object.keys(g.state.companyStage).some((cid) => isIpo(g.state, cid, c))) ipoGames++;
+    if (Object.values(g.state.companyStage).includes('closed')) shutdownGames++;
     const id = g.state.endingId ?? 'none';
     endings[id] = (endings[id] ?? 0) + 1;
     const y = g.state.record.history.length;
@@ -173,5 +218,14 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     avgEvents: events / n,
     repeatShare: events ? repeats / events : 0,
     realism,
+    companyLife: {
+      negotiationsPerGame: negotiations / n,
+      negotiateWinRate: rate(asks),
+      promotionHeldPerGame: held / n,
+      ipoRate: ipoGames / n,
+      shutdownRate: shutdownGames / n,
+      stockPayoutMedian: quantile(payouts, 0.5),
+      stockPayoutRate: payouts.length / n,
+    },
   };
 }

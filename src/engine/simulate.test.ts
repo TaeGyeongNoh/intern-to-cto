@@ -54,7 +54,7 @@ describe('simulate', () => {
     expect(skilled.byPosition.sre.endings['legend-sre'] ?? 0).toBeGreaterThanOrEqual(1);
   });
   it('loyal: 이직하지 않아서 원컴퍼니맨이 나온다', () => {
-    const r = simulate(100, CONTENT, 1, 'loyal');
+    const r = simulate(400, CONTENT, 1, 'loyal');
     expect(r.endings['one-company'] ?? 0).toBeGreaterThanOrEqual(1);
   });
   it('현실성: 나이별 연봉과 연차별 직급 분포를 낸다', () => {
@@ -63,5 +63,13 @@ describe('simulate', () => {
     expect(r.realism.salaryByAge[30].p90).toBeGreaterThanOrEqual(r.realism.salaryByAge[30].median);
     const y5 = Object.values(r.realism.titleByYear[5]).reduce((a, b) => a + b, 0);
     expect(y5).toBeCloseTo(1);
+  });
+  it('회사 생활 지표를 낸다', () => {
+    const r = simulate(200, CONTENT);
+    expect(r.companyLife.negotiationsPerGame).toBeGreaterThan(0);
+    expect(r.companyLife.negotiateWinRate).toBeGreaterThan(0);
+    expect(r.companyLife.negotiateWinRate).toBeLessThan(1);
+    expect(r.companyLife.promotionHeldPerGame).toBeGreaterThan(0);
+    expect(r.companyLife.shutdownRate).toBeGreaterThan(0);
   });
 });
