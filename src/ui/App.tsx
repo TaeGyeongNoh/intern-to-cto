@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { CONTENT } from '../content';
-import { apply, newGame, pending, type Game, type Input } from '../engine/game';
+import { apply, newGame, pending, type Game, type Input, type Outcome } from '../engine/game';
 import { clearSave, loadSave, writeSave, type SaveData } from './save';
 import { GameView } from './GameView';
 import { CreateScreen } from './screens/CreateScreen';
 import { EndingScreen } from './screens/EndingScreen';
+import { ResultCard } from './screens/ResultCard';
 import { replayShare, SHARE_PARAM } from './share';
 
 const LOG_MAX = 100;
@@ -51,11 +52,13 @@ export function App() {
   const [game, setGame] = useState<Game | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [saved, setSaved] = useState(() => loadSave());
+  const [result, setResult] = useState<Outcome | null>(null);
 
   const start = (g: Game) => {
     clearSave();
     setSaved(null);
     setGame(g);
+    setResult(null);
     setLog([firstLine(g)]);
     writeSave(g);
     window.scrollTo(0, 0);
@@ -66,6 +69,7 @@ export function App() {
     try {
       const r = restoreWithLog(saved);
       setGame(r.game);
+      setResult(null);
       setLog(r.log);
     } catch (e) {
       // 콘텐츠가 바뀌어 리플레이가 깨지면 저장을 버리고 생성 화면으로
@@ -76,20 +80,14 @@ export function App() {
   };
 
   const onInput = (input: Input) => {
-    const tryIt = () => {
-    clearShareQuery();
-    setShared(null);
-    window.scrollTo(0, 0);
-  };
-
-  if (shared) return <EndingScreen game={shared} shared onRestart={tryIt} />;
-  if (!game) return;
+    if (!game) return;
     try {
       const next = apply(game, input, CONTENT);
       const before = pending(game).kind;
       const after = pending(next).kind;
       setGame(next);
       setLog((l) => pushFeed(l, next.feed));
+      setResult(after === 'ended' ? null : next.outcome ?? null);
       if (after === 'ended') clearSave();
       else writeSave(next);
       if (before !== after && (after === 'offers' || after === 'ended' || before === 'offers')) window.scrollTo(0, 0);
@@ -102,6 +100,7 @@ export function App() {
     clearSave();
     setSaved(null);
     setGame(null);
+    setResult(null);
     setLog([]);
     window.scrollTo(0, 0);
   };
@@ -114,5 +113,10 @@ export function App() {
 
   if (shared) return <EndingScreen game={shared} shared onRestart={tryIt} />;
   if (!game) return <CreateScreen onStart={start} saved={saved} onContinue={resume} />;
-  return <GameView game={game} log={log} onInput={onInput} onRestart={restart} />;
+  return (
+    <>
+      <GameView game={game} log={log} onInput={onInput} onRestart={restart} />
+      {result && <ResultCard outcome={result} onClose={() => setResult(null)} />}
+    </>
+  );
 }

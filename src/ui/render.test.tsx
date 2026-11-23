@@ -61,3 +61,19 @@ describe('지원 호출', () => {
     expect(html).toContain('백엔드');
   });
 });
+
+describe('결과 카드', () => {
+  it('제목, 성공 여부, 상세, 변화량 칩을 그린다', async () => {
+    const { ResultCard } = await import('./screens/ResultCard');
+    const html = renderToString(<ResultCard outcome={{ title: 'PG 우회', ok: true, detail: 'MTTR 58분', deltas: [{ label: '평판', value: '+3', good: true }] }} onClose={() => {}} />);
+    expect(html).toContain('PG 우회');
+    expect(html).toContain('성공');
+    expect(html).toContain('MTTR 58분');
+    expect(html).toContain('평판 +3');
+    expect(html).toContain('다음');
+  });
+  it('변화가 없으면 안내 문구', async () => {
+    const { ResultCard } = await import('./screens/ResultCard');
+    expect(renderToString(<ResultCard outcome={{ title: '덮는다', deltas: [] }} onClose={() => {}} />)).toContain('눈에 띄는 변화는 없다');
+  });
+});
