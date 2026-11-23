@@ -9,6 +9,16 @@ export function actionChance(a: IncidentAction, clues: number, debug: number): n
   return clamp(a.baseChance + a.perClue * clues + (debug - 50) / 200, 0.05, 0.95);
 }
 
+/** 장애 선택지 표시 순서 (Fisher–Yates). 정답이 늘 같은 자리에 있지 않게 한다. */
+export function shuffledOrder(n: number, rng: Rng): number[] {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = rng.int(0, i);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function mttrMinutes(resolved: boolean, clues: number, rng: Rng): number {
   return resolved ? Math.max(5, 240 - clues * 60 + rng.int(-20, 20)) : 360 + rng.int(0, 240);
 }

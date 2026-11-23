@@ -128,7 +128,7 @@ describe('장애 흐름', () => {
   const base = (deck: Game['state']['deck']): Game => ({
     setup, seed: 1, rngState: 1,
     state: makeState({ deck }),
-    queue: [{ kind: 'incident-step', incidentId: 'payment-latency', step: 0, clues: 0, hintUsed: false }, { kind: 'review' }],
+    queue: [{ kind: 'incident-step', incidentId: 'payment-latency', step: 0, clues: 0, hintUsed: false, order: [0, 1, 2] }, { kind: 'review' }],
     log: [], feed: [],
   });
 
@@ -139,6 +139,21 @@ describe('장애 흐름', () => {
   it('정답 뷰를 고르면 단서가 쌓이고 다음 단계로', () => {
     const g = apply(base(['apm']), { t: 'pick', i: 0 }, CONTENT);
     expect(pending(g)).toMatchObject({ kind: 'incident-step', step: 1, clues: 1 });
+  });
+  it('다음 단계에 순열 order가 붙고, ask 후에도 order가 유지된다', () => {
+    const g = apply(base(['apm']), { t: 'pick', i: 0 }, CONTENT);
+    const p = pending(g);
+    if (p.kind !== 'incident-step') throw new Error('expected incident-step');
+    expect([...p.order].sort()).toEqual([0, 1, 2]);
+    const g2 = apply(base(['whatap-ai']), { t: 'ask' }, CONTENT);
+    expect(pending(g2)).toMatchObject({ order: [0, 1, 2] });
+  });
+  it('해를 넘기면 첫 단계에도 order가 붙는다', () => {
+    for (let seed = 1; seed < 30; seed++) {
+      const g = apply(skipPrologue(newGame(setup, seed, CONTENT)), { t: 'pick', i: 0 }, CONTENT);
+      const p = pending(g);
+      if (p.kind === 'incident-step') expect([...p.order].sort()).toEqual([0, 1, 2]);
+    }
   });
   it('와탭 AI가 있으면 한 번 물어볼 수 있다', () => {
     const g = base(['apm', 'whatap-ai']);

@@ -2,7 +2,7 @@ import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
-import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES } from './incident';
+import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, shuffledOrder } from './incident';
 import { createRng } from './rng';
 import { review, runYear } from './season';
 import { buyItem, pickShopItems } from './shop';
@@ -15,7 +15,8 @@ export type { Offer } from './career';
 export type Pending =
   | { kind: 'year' }
   | { kind: 'event'; eventId: string }
-  | { kind: 'incident-step'; incidentId: string; step: number; clues: number; hintUsed: boolean }
+  /** order: 선택지 표시 순서(원래 인덱스의 순열). 입력 i는 항상 원래 인덱스다 */
+  | { kind: 'incident-step'; incidentId: string; step: number; clues: number; hintUsed: boolean; order: number[] }
   | { kind: 'incident-action'; incidentId: string; clues: number }
   | { kind: 'postmortem'; incidentId: string; resolved: boolean }
   | { kind: 'review' }
@@ -113,7 +114,10 @@ export function apply(g: Game, input: Input, c: Content): Game {
       feed.push(...r.feed);
       const incidents = pickIncidents(s, rng, c);
       s = { ...s, recur: [] };
-      front = incidents.map((id): Pending => ({ kind: 'incident-step', incidentId: id, step: 0, clues: 0, hintUsed: false }));
+      front = incidents.map((id): Pending => ({
+        kind: 'incident-step', incidentId: id, step: 0, clues: 0, hintUsed: false,
+        order: shuffledOrder(c.incidents[id].steps[0].options.length, rng),
+      }));
       const ev = pickEvent(s, rng, c);
       if (ev) front.push({ kind: 'event', eventId: ev });
       front.push({ kind: 'review' });
@@ -151,7 +155,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       feed.push(opt.correct ? `단서 · ${opt.clue ?? '실마리를 찾았다'}` : `${opt.label}: 별다른 단서가 없다`);
       front = [
         p.step + 1 < inc.steps.length
-          ? { ...p, step: p.step + 1, clues }
+          ? { ...p, step: p.step + 1, clues, order: shuffledOrder(inc.steps[p.step + 1].options.length, rng) }
           : { kind: 'incident-action', incidentId: inc.id, clues },
       ];
       break;

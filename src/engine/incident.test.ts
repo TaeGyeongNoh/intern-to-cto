@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { actionChance, mttrMinutes, optionAvailable, pickIncidents } from './incident';
+import { actionChance, mttrMinutes, optionAvailable, pickIncidents, shuffledOrder } from './incident';
 import { createRng } from './rng';
 import { makeState } from './testing';
 
@@ -79,5 +79,20 @@ describe('장애 구조', () => {
       expect(inc.actions[0].perClue, inc.id).toBe(0.22);
       expect(inc.aiHint, inc.id).toBeTruthy();
     }
+  });
+});
+
+describe('shuffledOrder', () => {
+  it('0..n-1의 순열이고 같은 rng 상태면 같은 결과', () => {
+    for (let seed = 1; seed < 50; seed++) {
+      const a = shuffledOrder(3, createRng(seed));
+      expect([...a].sort()).toEqual([0, 1, 2]);
+      expect(shuffledOrder(3, createRng(seed))).toEqual(a);
+    }
+  });
+  it('여러 시드에서 0번이 여러 자리에 놓인다', () => {
+    const pos = new Set<number>();
+    for (let seed = 1; seed < 50; seed++) pos.add(shuffledOrder(3, createRng(seed)).indexOf(0));
+    expect(pos.size).toBe(3);
   });
 });
