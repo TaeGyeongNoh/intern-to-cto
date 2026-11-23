@@ -10,15 +10,15 @@ describe('marketSalary', () => {
   it('회사 기본급 × OVR 보정 × 직급 배수', () => {
     const s = makeState();
     const o = ovr(s.stats, s.position);
-    const f = Math.min(1.6, Math.max(0.8, 1 + (o - co.level) / 60));
+    const f = Math.min(1.15, Math.max(0.85, 1 + (o - co.level) / 100));
     expect(marketSalary(s, co)).toBe(Math.round(co.baseSalary * f * TITLE_SALARY_MULT['주니어']));
     expect(marketSalary({ ...s, title: '시니어' }, co)).toBe(Math.round(co.baseSalary * f * TITLE_SALARY_MULT['시니어']));
   });
-  it('OVR 보정은 0.8~1.6으로 자른다', () => {
+  it('OVR 보정은 0.85~1.15로 자른다 (작은 회사의 고수가 대기업 연봉을 받지는 않는다)', () => {
     const weak = makeState({ stats: { impl: 1, design: 1, debug: 1, infra: 1, ai: 1, mental: 1 } });
     const strong = makeState({ stats: { impl: 99, design: 99, debug: 99, infra: 99, ai: 99, mental: 99 } });
-    expect(marketSalary(weak, co)).toBe(Math.round(co.baseSalary * 0.8));
-    expect(marketSalary({ ...strong, title: 'CTO' }, co)).toBe(Math.round(co.baseSalary * 1.6 * TITLE_SALARY_MULT.CTO));
+    expect(marketSalary(weak, co)).toBe(Math.round(co.baseSalary * 0.85));
+    expect(marketSalary({ ...strong, title: 'CTO' }, co)).toBe(Math.round(co.baseSalary * 1.15 * TITLE_SALARY_MULT.CTO));
   });
   it('직급 배수는 트랙 안에서 단조 증가하고 주니어는 1', () => {
     const ic = ['주니어', '미드레벨', '시니어', '스태프', '프린시펄'].map((t) => TITLE_SALARY_MULT[t]);
@@ -29,12 +29,13 @@ describe('marketSalary', () => {
 });
 
 describe('reviewSalary', () => {
-  it('별점별 인상률', () => {
-    expect(RAISE_BY_RATING).toEqual([0, 0, 0.01, 0.03, 0.05, 0.08]);
+  it('별점별 인상률 (2점 이하 동결, 3점 2%, 5점 4%)', () => {
+    expect(RAISE_BY_RATING).toEqual([0, 0, 0, 0.02, 0.03, 0.04]);
     const s = makeState({ salary: 3000 });
     expect(reviewSalary(s, 1, co)).toBe(3000);
-    expect(reviewSalary(s, 3, co)).toBe(3090);
-    expect(reviewSalary(s, 5, co)).toBe(3240);
+    expect(reviewSalary(s, 2, co)).toBe(3000);
+    expect(reviewSalary(s, 3, co)).toBe(3060);
+    expect(reviewSalary(s, 5, co)).toBe(3120);
   });
   it('시장가 × 1.15를 넘지 않고, 깎이지도 않는다', () => {
     const s = makeState();

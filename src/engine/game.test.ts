@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { apply, NEGOTIATE_CHOICES, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
 import { STOCK_GRANT_MULT } from './company';
-import { marketSalary, NEGOTIATE_BONUS, NEGOTIATE_CAP, negotiateChance, RAISE_BY_RATING } from './salary';
+import { marketSalary, NEGOTIATE_BONUS, NEGOTIATE_CAP, NEGOTIATE_FAIL_RAISE, negotiateChance, RAISE_BY_RATING } from './salary';
 import { createRng } from './rng';
 import { FAST_MTTR } from './incident';
 import { RETIRE_AGE } from './season';
@@ -400,7 +400,7 @@ describe('연봉 협상', () => {
     expect(g.outcome?.title).toBe(NEGOTIATE_CHOICES[0]);
     expect(pending(g).kind).not.toBe('negotiate');
   });
-  it('더 달라고 하면: 성공은 prev × (1 + 인상률 + 보너스, 상한), 실패는 prev × 1.01. 히스토리·최고연봉도 고친다', () => {
+  it('더 달라고 하면: 성공은 prev × (1 + 인상률 + 보너스, 상한), 실패는 별점 2 수준 인상. 히스토리·최고연봉도 고친다', () => {
     const seen = new Set<boolean>();
     for (let seed = 1; seed < 80; seed++) {
       const g = apply({ ...negotiating(), rngState: seed }, { t: 'pick', i: 1 }, CONTENT);
@@ -408,7 +408,7 @@ describe('연봉 협상', () => {
       seen.add(ok);
       const market = marketSalary(g.state, CONTENT.companies[g.state.companyId]);
       const win = Math.min(Math.round(5000 * (1 + RAISE_BY_RATING[4] + NEGOTIATE_BONUS)), Math.round(market * NEGOTIATE_CAP));
-      expect(g.state.salary).toBe(ok ? Math.max(5250, win) : 5050);
+      expect(g.state.salary).toBe(ok ? Math.max(5250, win) : Math.round(5000 * (1 + NEGOTIATE_FAIL_RAISE)));
       expect(g.state.record.history.at(-1)!.salary).toBe(g.state.salary);
       expect(g.state.maxSalary).toBe(Math.max(5000, g.state.salary));
       expect(g.outcome!.deltas.some((d) => d.label === '연봉')).toBe(g.state.salary !== 5250);

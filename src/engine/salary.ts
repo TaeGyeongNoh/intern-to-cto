@@ -7,12 +7,12 @@ import { clamp } from './util';
  * CTO만 크게 뛴다 (시뮬레이션 기준: 10년차 중앙값 ~9천, 최고연봉 p90 ~3억, 빅테크 CTO ~3.5억).
  */
 export const TITLE_SALARY_MULT: Record<string, number> = {
-  주니어: 1.0, 미드레벨: 1.1, 시니어: 1.15, 스태프: 1.25, 프린시펄: 1.5,
+  주니어: 1.0, 미드레벨: 1.05, 시니어: 1.12, 스태프: 1.25, 프린시펄: 1.5,
   팀장: 1.2, 'VP of Engineering': 1.35, CTO: 3.4,
 };
 
 /** 별점(1~5)별 연봉 인상률. 인덱스 0은 사용하지 않는다. */
-export const RAISE_BY_RATING = [0, 0, 0.01, 0.03, 0.05, 0.08];
+export const RAISE_BY_RATING = [0, 0, 0, 0.02, 0.03, 0.04];
 /** 연말 인상으로 도달할 수 있는 상한 (시장가 대비) */
 export const REVIEW_CAP = 1.15;
 /** 이직 제안 상한 (시장가 대비) */
@@ -20,7 +20,7 @@ export const OFFER_CAP = 1.3;
 
 /** 이 회사에서 이 사람의 시장가 (만원). */
 export function marketSalary(s: GameState, company: Company): number {
-  const skill = clamp(1 + (ovr(s.stats, s.position) - company.level) / 60, 0.8, 1.6);
+  const skill = clamp(1 + (ovr(s.stats, s.position) - company.level) / 100, 0.85, 1.15);
   return Math.round(company.baseSalary * skill * (TITLE_SALARY_MULT[s.title] ?? 1));
 }
 
