@@ -48,6 +48,27 @@ const GENERAL: GameEvent[] = [
     ],
   },
   {
+    id: 'lead-hiring',
+    when: { track: 'mgmt', minCareerYear: 8 },
+    once: false,
+    weight: 1.5,
+    text: '팀 TO가 세 자리 났다. 면접 일정이 캘린더를 테트리스처럼 채운다.',
+    choices: [
+      { label: '면접관으로 직접 뛴다', effects: { reputation: 4, burnout: 6, story: '면접만 마흔 번 보고 세 명을 뽑았다. 그중 둘이 나중에 팀장이 됐다.' } },
+      { label: '코딩 테스트 점수 순으로 뽑는다', effects: { reputation: -1 } },
+    ],
+  },
+  {
+    id: 'lead-reorg',
+    when: { track: 'mgmt', minCareerYear: 10, minOvr: 70 },
+    weight: 2,
+    text: '조직 개편안이 돌았다. 옆 팀 팀장이 나가면서 그 팀까지 맡아 달라고 한다. 슬랙 채널이 두 배가 된다.',
+    choices: [
+      { label: '두 팀을 맡는다', effects: { reputation: 6, burnout: 10, story: '조직 개편으로 두 팀을 맡았다. 1on1이 주 열두 번이 됐다.' } },
+      { label: '지금 팀에 집중한다', effects: { burnout: -5 } },
+    ],
+  },
+  {
     id: 'keynote',
     when: { minOvr: 65 },
     once: false,
@@ -60,8 +81,8 @@ const GENERAL: GameEvent[] = [
   },
   {
     id: 'founder-offer',
-    weight: 0.4,
-    when: { route: ['commerce', 'finance', 'ai-startup'], minOvr: 62, minCareerYear: 8, notFlags: ['founder'] },
+    weight: 0.5,
+    when: { route: ['commerce', 'finance', 'ai-startup'], minOvr: 62, minCareerYear: 8, maxAge: 42, notFlags: ['founder'] },
     text: '전 동료가 같이 창업하자고 한다. 아이템은 "AI 에이전트용 무언가".',
     choices: [
       { label: '창업한다', effects: { flags: ['founder'], company: 'founder-{route}', burnout: 10, story: '회사를 나와 창업했다.' } },

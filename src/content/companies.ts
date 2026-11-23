@@ -33,7 +33,7 @@ const founderStages = (): GrowthStage[] => [
     closeEffects: { ...FOUNDER_FAIL, stats: { design: 3, mental: 2, infra: 2 }, reputation: 2, story: '투자금을 다 쓰고 회사를 접었다. 투자사에 보낸 마지막 메일이 제일 잘 쓴 메일이었다.' },
   },
   {
-    name: '시리즈 A', level: 50, baseSalary: 4200, addCards: ['server'], up: 0.15, down: 0.1,
+    name: '시리즈 A', level: 50, baseSalary: 4200, addCards: ['server'], up: 0.2, down: 0.1,
     text: '{company}이/가 시리즈 A를 마쳤다. 채용 공고에서 "대표와 가까운 거리에서 일합니다"를 지웠다.',
     closeEffects: { ...FOUNDER_FAIL, stats: { design: 4, mental: 3, infra: 2 }, reputation: 4, story: '직원들 이직처를 다 챙기고 마지막으로 불을 껐다.' },
   },
