@@ -14,7 +14,7 @@ console.log(`${r.games}판 · 평균 ${r.avgYears.toFixed(1)}년 (최대 ${r.max
 console.log(`장애 해결률: 단서 0개 ${pct(r.resolveRate.noClue)} / 단서 1개 이상 ${pct(r.resolveRate.withClues)}`);
 const won = (x: number) => `${x.toLocaleString('ko-KR')}만원`;
 console.log(`연봉: 10년차 중앙값 ${won(r.salaryYear10Median)} · 최고연봉 중앙값 ${won(r.maxSalary.median)} / p90 ${won(r.maxSalary.p90)} / 최대 ${won(r.maxSalary.max)}`);
-console.log(`자산: 은퇴 순자산 중앙값 ${won(r.assets.median)} / p90 ${won(r.assets.p90)} · 판당 구매 ${r.avgPurchases.toFixed(1)}건 · 내 집 마련 ${pct(r.houseRate)}`);
+console.log(`자산: 은퇴 순자산 중앙값 ${won(r.assets.median)} / p90 ${won(r.assets.p90)} · 주거 자기 자금 포함 ${won(r.assetsWithHousing.median)} / ${won(r.assetsWithHousing.p90)} · 판당 구매 ${r.avgPurchases.toFixed(1)}건 · 전세 ${pct(r.jeonseRate)} · 내 집 마련 ${pct(r.houseRate)}`);
 console.log(`이벤트: 판당 ${r.avgEvents.toFixed(1)}건 · 반복 비율 ${pct(r.repeatShare)}`);
 const cl = r.companyLife;
 console.log(`회사 생활: 판당 협상 ${cl.negotiationsPerGame.toFixed(1)}회 (더 요구 성공 ${pct(cl.negotiateWinRate)}) · 승진 보류 ${cl.promotionHeldPerGame.toFixed(2)}회 · 상장 ${pct(cl.ipoRate)} · 폐업 ${pct(cl.shutdownRate)} · 스톡옵션 행사 ${pct(cl.stockPayoutRate)} (중앙값 ${won(cl.stockPayoutMedian)})`);

@@ -2,8 +2,14 @@ import { shopFlag } from '../engine/shop';
 import type { ShopItem } from '../engine/types';
 
 /**
- * 연말 상점. 가격은 만원 단위, 저축은 연봉의 25%라 10년차쯤 한 해 2천만원 남짓 모인다.
+ * 연말 상점. 가격은 만원 단위, 저축은 연봉의 25%라 10년차쯤 한 해 1,500만원 남짓 모인다.
  * once(기본 true) 물건은 한 번 사면 다시 나오지 않는다.
+ *
+ * 주거는 대출이 없는 게임이라 "내 통장에서 나가는 현금"만 값으로 둔다 (AGENTS.md 현실 기준표).
+ * - 전세: 수도권 아파트 전세 약 3억 중 전세자금대출(최대 2.2억)을 뺀 자기 부담 8,000만원.
+ * - 내 집: 수도권(강남 밖) 아파트 약 6억, 생애최초 LTV 70%라 자기 자금 30% 1.8억 + 취득세·중개 약 1천만원 = 1.9억.
+ *   전세 보증금 자기 부담분 8,000만원을 돌려받아 보태므로 추가로 나가는 현금은 1.1억원이다.
+ *   대출 원리금은 따로 빼지 않는다 (저축률 25%에 포함된 것으로 본다).
  */
 export const SHOP_ITEMS: ShopItem[] = [
   // 장비
@@ -23,9 +29,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'jeju', name: '제주 한 달 살기', category: 'rest', price: 2000, when: { minBurnout: 40 }, text: '귤밭 옆 작업실. 슬랙 알림은 끄고, 파도 소리는 켠다.', effects: { burnout: -25, stats: { mental: 1 }, story: '제주에서 한 달을 살았다. 퇴사는 하지 않았다.' } },
 
   // 인생
-  { id: 'ev', name: '전기차', category: 'life', price: 5000, when: { minCareerYear: 4 }, text: '출근길이 조용해졌다. 충전 앱 알림이 온콜 알림보다 많다.', effects: { story: '전기차를 샀다. 첫 주행은 회사 지하 충전소까지.' } },
-  { id: 'jeonse', name: '전세 계약', category: 'life', price: 15000, when: { minCareerYear: 5 }, text: '등기부등본을 읽는 법을 배웠다. 장애 리포트보다 어렵다.', effects: { story: '전셋집을 얻었다. 집주인 문자에는 아직도 심장이 뛴다.' } },
-  { id: 'house', name: '내 집 마련', category: 'life', price: 40000, when: { flags: [shopFlag('jeonse')] }, text: '대출 30년. 이제 진짜 은퇴할 수 없다. 그래도 벽에 못은 마음대로 박는다.', effects: { burnout: -5, stats: { mental: 2 }, story: '내 집을 마련했다. 서버실보다 조용한 방이 생겼다.' } },
+  { id: 'ev', name: '전기차', category: 'life', price: 4000, when: { minCareerYear: 4 }, text: '출근길이 조용해졌다. 충전 앱 알림이 온콜 알림보다 많다.', effects: { story: '전기차를 샀다. 첫 주행은 회사 지하 충전소까지.' } },
+  { id: 'jeonse', name: '전세 계약', category: 'life', price: 8000, when: { minCareerYear: 5 }, text: '보증금의 대부분은 은행 돈이다. 등기부등본을 읽는 법을 배웠다. 장애 리포트보다 어렵다.', effects: { story: '전셋집을 얻었다. 집주인 문자에는 아직도 심장이 뛴다.' } },
+  { id: 'house', name: '내 집 마련', category: 'life', price: 11000, when: { flags: [shopFlag('jeonse')] }, text: '전세금을 빼서 계약금에 보탰다. 나머지는 대출 30년. 그래도 벽에 못은 마음대로 박는다.', effects: { burnout: -5, stats: { mental: 2 }, story: '내 집을 마련했다. 서버실보다 조용한 방이 생겼다.' } },
 
   // 투자
   { id: 'coin', name: '코인', category: 'invest', price: 1000, once: false, gamble: { chance: 0.35, win: 3, lose: 0.15 }, text: '백서를 읽었다. 이해는 못 했다. 차트는 어제와 같은 모양이다.', effects: { burnout: 3 } },

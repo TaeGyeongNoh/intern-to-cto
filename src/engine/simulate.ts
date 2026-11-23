@@ -28,8 +28,12 @@ export type SimReport = {
   maxSalary: { median: number; p90: number; max: number };
   /** 만원. 은퇴 시점 순자산 */
   assets: { median: number; p90: number };
+  /** 만원. 은퇴 순자산 + 주거에 넣은 자기 자금(HOUSING_ITEMS 가격 합). 대출 없는 게임이라 집값 대신 자기 자금만 더한다 */
+  assetsWithHousing: { median: number; p90: number };
   /** 내 집 마련(house)을 산 판의 비율 */
   houseRate: number;
+  /** 전세(jeonse)를 산 판의 비율 (내 집 포함) */
+  jeonseRate: number;
   /** 판당 평균 상점 구매 수 */
   avgPurchases: number;
   /** 시작 유형별 판 수·평균 연차·엔딩 분포 */
@@ -106,6 +110,9 @@ const isIpo = (s: Game['state'], id: string, c: Content): boolean => {
   return typeof k === 'number' && !!c.companies[id].stages?.[k]?.ipo;
 };
 
+/** 주거 자기 자금으로 보는 상점 물건 (사도 순자산이 사라지지 않고 집에 묶인다) */
+export const HOUSING_ITEMS = ['jeonse', 'house'];
+
 const POSITIONS: PositionId[] = ['backend', 'frontend', 'sre', 'ai'];
 /** 학력별 점검에서 '상위 엔딩'으로 보는 것 */
 export const TOP_ENDINGS = ['cto', 'vp', 'principal'];
@@ -138,6 +145,8 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   const maxSalaries: number[] = [];
   const assets: number[] = [];
   let houses = 0;
+  let jeonses = 0;
+  const withHousing: number[] = [];
   let purchases = 0;
   const byArchetype: SimReport['byArchetype'] = {};
   const byPosition = Object.fromEntries(POSITIONS.map((p) => [p, { games: 0, endings: {} }])) as SimReport['byPosition'];
@@ -252,6 +261,8 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     maxSalaries.push(g.state.maxSalary);
     assets.push(g.state.assets);
     if (g.state.purchases.includes('house')) houses++;
+    if (g.state.purchases.includes('jeonse')) jeonses++;
+    withHousing.push(g.state.assets + HOUSING_ITEMS.reduce((sum, id) => sum + (g.state.purchases.includes(id) ? c.shop[id]?.price ?? 0 : 0), 0));
     purchases += g.state.purchases.length;
     const row = (byArchetype[g.state.archetypeId] ??= { games: 0, avgYears: 0, endings: {} });
     row.games += 1;
@@ -297,7 +308,9 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     salaryYear10Median: quantile(year10, 0.5),
     maxSalary: { median: quantile(maxSalaries, 0.5), p90: quantile(maxSalaries, 0.9), max: quantile(maxSalaries, 1) },
     assets: { median: quantile(assets, 0.5), p90: quantile(assets, 0.9) },
+    assetsWithHousing: { median: quantile(withHousing, 0.5), p90: quantile(withHousing, 0.9) },
     houseRate: houses / n,
+    jeonseRate: jeonses / n,
     avgPurchases: purchases / n,
     byArchetype,
     byOrigin: Object.fromEntries([...originAgg].map(([key, a]) => [key, { games: a.games, avgYears: a.years / a.games, firstSalaryMedian: quantile(a.first, 0.5), maxSalaryMedian: quantile(a.max, 0.5), endings: a.endings }])),

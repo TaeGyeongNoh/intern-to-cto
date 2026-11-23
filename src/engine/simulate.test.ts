@@ -18,6 +18,12 @@ describe('simulate', () => {
     expect(r.maxSalary.p90).toBeGreaterThanOrEqual(r.maxSalary.median);
     expect(r.maxSalary.max).toBeGreaterThanOrEqual(r.maxSalary.p90);
   });
+  it('주거 자기 자금(전세·내 집에 넣은 현금)을 더한 순자산을 따로 낸다', () => {
+    const r = simulate(100, CONTENT);
+    expect(r.assetsWithHousing.median).toBeGreaterThanOrEqual(r.assets.median);
+    expect(r.assetsWithHousing.p90).toBeGreaterThanOrEqual(r.assets.p90);
+    expect(r.jeonseRate).toBeGreaterThanOrEqual(r.houseRate);
+  });
   it('결정론적이다', () => {
     expect(simulate(30, CONTENT, 7)).toEqual(simulate(30, CONTENT, 7));
   });
