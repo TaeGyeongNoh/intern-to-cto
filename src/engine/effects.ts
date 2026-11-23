@@ -34,6 +34,7 @@ export function applyEffects(s: GameState, e: Effects): GameState {
     track: e.track ?? s.track,
     scheduled: e.next ? [...s.scheduled, { id: e.next, companyId: s.companyId }] : s.scheduled,
     retired: s.retired || !!e.retire,
+    boundUntil: e.bound ? Math.max(s.boundUntil, s.yearsInCareer + e.bound) : s.boundUntil,
     record: e.story ? { ...s.record, story: [...s.record.story, `${s.year}년 · ${e.story}`] } : s.record,
   };
 }

@@ -48,12 +48,14 @@ export const ENDING_ART: Record<string, string> = {
   'founder-exit': endFounderExit, 'founder-fail': endFounderFail, cto: endCto, vp: endVp,
   'legend-sre': endLegendSre, keynote: endKeynote, principal: endPrincipal,
   'one-company': endOneCompany, ordinary: endOrdinary,
+  // 흔한 끝 엔딩은 기존 그림을 재사용한다
+  staff: endPrincipal, 'team-lead': evLead, 'veteran-senior': endOneCompany,
 };
 
 const EVENT_ART: Record<string, string> = {
   'adopt-commerce': evMonitoring, 'adopt-finance': evMonitoring, 'adopt-ai': evMonitoring,
   'lead-offer': evLead, keynote: evKeynote,
-  'founder-offer': evFounder, 'founder-outcome': evFounder,
+  'founder-offer': evFounder, 'founder-runway': evFounder,
   'ai-replacement': evAiReplace, rest: evBurnout,
   'ai-chatbot-1': evChatbot, 'ai-chatbot-2': evChatbot, 'ai-chatbot-3a': evChatbot, 'ai-chatbot-3b': evChatbot,
   'prologue-start': evPrologue, 'prologue-result': evPrologue,
@@ -68,6 +70,8 @@ const EVENT_ART_PREFIX: [prefix: string, art: string][] = [
   ['blackfriday-', evBlackFriday],
   ['migration-', evMigration],
   ['msa-', evMsa],
+  ['tenure-', evLead],
+  ['lead-', evLead],
 ];
 
 export const eventArt = (eventId: string): string | undefined =>

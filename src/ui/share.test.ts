@@ -31,6 +31,38 @@ describe('share link', () => {
     }
   });
 
+  it('출신이 있으면 7칸으로 왕복하고 같은 결과로 리플레이된다', () => {
+    const r = createRng(77);
+    let g = newGame({ name: '고졸', position: 'sre', route: 'finance', candidate: 2, education: 'highschool', service: 'industrial' }, 77, CONTENT);
+    for (let guard = 0; pending(g).kind !== 'ended' && guard < 5000; guard++) g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+    const payload = encodeShare(g);
+    const head = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')), (ch) => ch.charCodeAt(0))));
+    expect(head).toHaveLength(7);
+    expect(decodeShare(payload)?.setup).toEqual(g.setup);
+    expect(replayShare(payload, CONTENT)?.state).toEqual(g.state);
+  });
+
+  it('출신 없는 옛 5칸 링크는 기본 출신으로 디코드되어 이전과 같은 엔딩이 된다', () => {
+    const g = playRandom(4);
+    const payload = encodeShare(g);
+    const run = decodeShare(payload)!;
+    expect(run.setup.education).toBeUndefined();
+    expect(run.setup.service).toBeUndefined();
+    const explicit = replay({ ...run.setup, education: 'university', service: 'none' }, run.seed, run.log, CONTENT);
+    expect(replayShare(payload, CONTENT)?.state.endingId).toBe(explicit.state.endingId);
+    expect(replayShare(payload, CONTENT)?.state).toEqual(explicit.state);
+  });
+
+  it('7칸의 출신 칸 타입이 틀리거나 모르는 출신이면 null', () => {
+    const enc = (arr: unknown[]) => `1.${btoa(JSON.stringify(arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}.`;
+    expect(decodeShare(enc(['a', 'sre', 'finance', 1, 5, 3, 'none']))).toBeNull();
+    expect(decodeShare(enc(['a', 'sre', 'finance', 1, 5, 'grad', null]))).toBeNull();
+    expect(decodeShare(enc(['a', 'sre', 'finance', 1, 5, 'grad']))).toBeNull();
+    expect(decodeShare(enc(['a', 'sre', 'finance', 1, 5, 'grad', 'research']))?.setup).toMatchObject({ education: 'grad', service: 'research' });
+    // 모르는 id는 디코드는 되지만 리플레이에서 실패해 새 게임으로 넘어간다
+    expect(replayShare(enc(['a', 'sre', 'finance', 1, 5, 'phd', 'none']), CONTENT)).toBeNull();
+  });
+
   it('ask 입력도 왕복한다', () => {
     const run = decodeShare(encodeShare({ setup: { name: 'a', position: 'sre', route: 'finance', candidate: 1 }, seed: 5, log: [{ t: 'pick', i: 0 }, { t: 'ask' }, { t: 'pick', i: 35 }] }));
     expect(run?.log).toEqual([{ t: 'pick', i: 0 }, { t: 'ask' }, { t: 'pick', i: 35 }]);

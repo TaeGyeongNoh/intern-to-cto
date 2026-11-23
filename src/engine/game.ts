@@ -1,27 +1,37 @@
 import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer } from './career';
+import { effectiveCompany, growCompany, STOCK_GRANT_MULT, stockEligible } from './company';
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
-import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES } from './incident';
+import { actionChance, FAST_MTTR, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
+import { diffState, type Outcome } from './outcome';
+import { applyOrigin, firstSalary, originPrologue, PROLOGUE_START, resolveOrigin } from './origin';
 import { createRng } from './rng';
+import { negotiateChance, negotiatedSalary } from './salary';
 import { review, runYear } from './season';
-import { buyItem, pickShopItems } from './shop';
+import { buyItem, nextMarket, pickShopItems, shopChoices } from './shop';
+import { byYear } from './util';
 import { createInitialState, type Setup } from './state';
 import type { Content, GameState } from './types';
 
 export type { Setup } from './state';
 export type { Offer } from './career';
+export type { Outcome, Delta } from './outcome';
 
 export type Pending =
   | { kind: 'year' }
   | { kind: 'event'; eventId: string }
-  | { kind: 'incident-step'; incidentId: string; step: number; clues: number; hintUsed: boolean }
+  /** order: 선택지 표시 순서(원래 인덱스의 순열). 입력 i는 항상 원래 인덱스다 */
+  | { kind: 'incident-step'; incidentId: string; step: number; clues: number; hintUsed: boolean; order: number[] }
   | { kind: 'incident-action'; incidentId: string; clues: number }
   | { kind: 'postmortem'; incidentId: string; resolved: boolean }
   | { kind: 'review' }
-  /** 연말 상점: pick i는 items[i]를 사고, pick items.length는 건너뛴다 */
+  /** 별점 4 이상인 해의 연봉 협상. base: 자동 인상 제시안(이미 반영됨), prev·prevMax: 평가 전 연봉·최고연봉 */
+  | { kind: 'negotiate'; rating: number; base: number; prev: number; prevMax: number }
+  /** 연말 상점: pick i는 shopChoices(items)[i]를 사고(투자는 금액 단계까지), pick choices.length는 건너뛴다 */
   | { kind: 'shop'; items: string[] }
-  | { kind: 'offers'; offers: Offer[] }
+  /** forced: 지금 회사가 문을 닫아 남을 수 없다 ("남는다" 입력이 없다) */
+  | { kind: 'offers'; offers: Offer[]; forced?: true }
   | { kind: 'ended' };
 
 export type Input = { t: 'pick'; i: number } | { t: 'ask' };
@@ -35,24 +45,36 @@ export type Game = {
   log: Input[];
   /** 마지막 apply에서 일어난 일 (UI 표시용) */
   feed: string[];
+  /** 마지막 apply에서 플레이어가 고른 것의 결과 (UI 결과 카드용, 없으면 undefined) */
+  outcome?: Outcome;
 };
 
 const pick = (i: number): Input => ({ t: 'pick', i });
 
-/** 첫 해 전에 거치는 취준·인턴 프롤로그의 시작 이벤트 (콘텐츠에 있을 때만) */
-export const PROLOGUE_START = 'prologue-start';
+/** 연봉 협상 선택지 (입력 인덱스 순서) */
+export const NEGOTIATE_CHOICES = ['제시안에 사인한다', '조금만 더 올려 달라고 한다', '인상 대신 스톡옵션을 받는다'] as const;
+/** 협상이 열리는 최소 별점 */
+export const NEGOTIATE_MIN_RATING = 4;
+/** 협상이 열리는 최소 근속 (입사 첫해 연말은 입사 때 연봉을 정했으니 조정 대상에서 빠진다) */
+export const NEGOTIATE_MIN_YEARS_AT_COMPANY = 2;
+
+export { PROLOGUE_START };
 
 const openingLine = (s: GameState, c: Content) => `${c.companies[s.companyId].name}에 신입으로 입사했다.`;
 
 export function newGame(setup: Setup, seed: number, c: Content): Game {
+  const origin = resolveOrigin(setup, c);
   const rng = createRng(seed);
   let state = createInitialState(setup, seed, rng, c);
   const queue: Pending[] = [{ kind: 'year' }];
-  if (c.events[PROLOGUE_START]) {
+  const first = originPrologue(origin);
+  if (c.events[first]) {
     // 입사 문장은 프롤로그로 첫 회사가 정해진 뒤 첫 해를 넘길 때 남긴다
     state = { ...state, record: { ...state.record, story: [] } };
-    queue.unshift({ kind: 'event', eventId: PROLOGUE_START });
+    queue.unshift({ kind: 'event', eventId: first });
   }
+  // 출신 문장("현역 복무")은 story를 비운 뒤에 남긴다. 출신 처리는 rng를 쓰지 않는다
+  state = applyOrigin(state, origin);
   return drain({ setup, seed, rngState: rng.getState(), state, queue, log: [], feed: [] }, c);
 }
 
@@ -78,10 +100,12 @@ export function validInputs(g: Game, c: Content): Input[] {
       return c.incidents[p.incidentId].actions.map((_, i) => pick(i));
     case 'postmortem':
       return POSTMORTEM_CHOICES.map((_, i) => pick(i));
+    case 'negotiate':
+      return [pick(0), pick(1), ...(p.base > p.prev && stockEligible(s, c) ? [pick(2)] : [])];
     case 'shop':
-      return Array.from({ length: p.items.length + 1 }, (_, i) => pick(i));
+      return Array.from({ length: shopChoices(p.items, s, c).length + 1 }, (_, i) => pick(i));
     case 'offers':
-      return Array.from({ length: p.offers.length + 1 }, (_, i) => pick(i));
+      return Array.from({ length: p.offers.length + (p.forced ? 0 : 1) }, (_, i) => pick(i));
     default:
       return [];
   }
@@ -100,20 +124,28 @@ export function apply(g: Game, input: Input, c: Content): Game {
   const rng = createRng(g.rngState);
   let s = g.state;
   const feed: string[] = [];
+  const before = g.state;
+  let result: Omit<Outcome, 'deltas'> | undefined;
   let front: Pending[] = [];
 
   switch (p.kind) {
     case 'year': {
-      if (s.yearsInCareer === 0 && !s.record.story.some((line) => line.endsWith(openingLine(s, c)))) {
-        // 프롤로그 중 연봉 변화는 경력 전이므로 최고 연봉 기록은 첫 연봉부터 센다
-        s = { ...s, maxSalary: s.salary, record: { ...s.record, story: [...s.record.story, `${s.year}년 · ${openingLine(s, c)}`] } };
+      if (s.yearsInCareer === 0) {
+        // 첫 회사가 프롤로그로 정해진 뒤 출신 가감을 더한다. 프롤로그 중 연봉 변화는 경력 전이므로 최고 연봉 기록은 첫 연봉부터 센다
+        const salary = firstSalary(s.salary, resolveOrigin(g.setup, c));
+        s = { ...s, salary, maxSalary: salary };
+        if (!s.record.story.some((line) => line.endsWith(openingLine(s, c))))
+          s = { ...s, record: { ...s.record, story: [...s.record.story, `${s.year}년 · ${openingLine(s, c)}`] } };
       }
       const r = runYear(s, rng, c);
       s = r.state;
       feed.push(...r.feed);
       const incidents = pickIncidents(s, rng, c);
       s = { ...s, recur: [] };
-      front = incidents.map((id): Pending => ({ kind: 'incident-step', incidentId: id, step: 0, clues: 0, hintUsed: false }));
+      front = incidents.map((id): Pending => ({
+        kind: 'incident-step', incidentId: id, step: 0, clues: 0, hintUsed: false,
+        order: shuffledOrder(c.incidents[id].steps[0].options.length, rng),
+      }));
       const ev = pickEvent(s, rng, c);
       if (ev) front.push({ kind: 'event', eventId: ev });
       front.push({ kind: 'review' });
@@ -129,6 +161,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       if (eff.company) s = moveToCompany(s, eff.company, c);
       s = applyEffects(s, eff);
       if (eff.now) front = [{ kind: 'event', eventId: eff.now }];
+      result = chance === undefined ? { title: ch.label } : { title: ch.label, ok };
       feed.push(chance === undefined ? ch.label : `${ch.label} — ${ok ? '성공' : '실패'}`);
       break;
     }
@@ -151,7 +184,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       feed.push(opt.correct ? `단서 · ${opt.clue ?? '실마리를 찾았다'}` : `${opt.label}: 별다른 단서가 없다`);
       front = [
         p.step + 1 < inc.steps.length
-          ? { ...p, step: p.step + 1, clues }
+          ? { ...p, step: p.step + 1, clues, order: shuffledOrder(inc.steps[p.step + 1].options.length, rng) }
           : { kind: 'incident-action', incidentId: inc.id, clues },
       ];
       break;
@@ -170,25 +203,73 @@ export function apply(g: Game, input: Input, c: Content): Game {
           incidentsTotal: s.record.incidentsTotal + 1,
           incidentsResolved: s.record.incidentsResolved + (ok ? 1 : 0),
           mttrTotalMin: s.record.mttrTotalMin + mttr,
+          fastResolves: s.record.fastResolves + (ok && mttr <= FAST_MTTR ? 1 : 0),
         },
       };
+      result = { title: a.label, ok, detail: `MTTR ${mttr}분` };
       feed.push(`${ok ? '복구' : '복구 실패'} — ${a.label} (MTTR ${mttr}분)`);
       front = [{ kind: 'postmortem', incidentId: inc.id, resolved: ok }];
       break;
     }
     case 'postmortem': {
       const i = indexOf(input);
-      if (i === 0) s = applyEffects(s, { reputation: 2, traits: { 문화: 1 } });
+      if (i === 0) {
+        s = applyEffects(s, {
+          burnout: POSTMORTEM_PUBLISH.burnout,
+          reputation: p.resolved ? POSTMORTEM_PUBLISH.reputation : 0,
+          traits: { 문화: 1 },
+        });
+      }
       else if (i === 1) {
         if (rng.chance(0.5)) s = { ...s, recur: [...s.recur, p.incidentId] };
       } else s = applyEffects(s, { reputation: -4, traits: { 정치력: 1 } });
+      result = { title: POSTMORTEM_CHOICES[i] };
       feed.push(POSTMORTEM_CHOICES[i]);
+      break;
+    }
+    case 'negotiate': {
+      const i = indexOf(input);
+      let salary = p.base;
+      let ok: boolean | undefined;
+      let detail: string;
+      if (i === 0) {
+        detail = '서명 한 번에 올해 협상이 끝났다. 볼펜은 돌려줬다.';
+      } else if (i === 1) {
+        ok = rng.chance(negotiateChance(s, p.rating));
+        const r = negotiatedSalary(s, effectiveCompany(s.companyId, s, c), p.rating, p.prev, p.base);
+        salary = ok ? r.win : r.lose;
+        detail = ok ? '인사팀이 한숨을 쉬더니 숫자를 고쳐 적었다.' : '"예산이 정해져 있어서요." 분위기가 싸해지고, 인상률이 오히려 깎였다.';
+      } else {
+        salary = p.prev;
+        const grant = (p.base - p.prev) * STOCK_GRANT_MULT;
+        const held = s.stock?.companyId === s.companyId ? s.stock.value : 0;
+        s = { ...s, stock: { companyId: s.companyId, value: held + grant } };
+        detail = '숫자 대신 종이 한 장을 받았다. 상장하면 이 종이가 돈이 된다고 한다. 아마도.';
+      }
+      if (salary !== s.salary) {
+        const history = s.record.history.map((row, k, all) => (k === all.length - 1 ? { ...row, salary } : row));
+        s = { ...s, salary, maxSalary: Math.max(p.prevMax, salary), record: { ...s.record, history } };
+      }
+      result = ok === undefined ? { title: NEGOTIATE_CHOICES[i], detail } : { title: NEGOTIATE_CHOICES[i], ok, detail };
+      feed.push(ok === undefined ? `연봉 협상 · ${NEGOTIATE_CHOICES[i]}` : `연봉 협상 · ${NEGOTIATE_CHOICES[i]} — ${ok ? '성공' : '실패'}`);
       break;
     }
     case 'shop': {
       const i = indexOf(input);
-      if (i < p.items.length) {
-        const r = buyItem(s, c.shop[p.items[i]], rng);
+      const choices = shopChoices(p.items, s, c);
+      if (i < choices.length) {
+        const ch = choices[i];
+        const item = c.shop[ch.itemId];
+        const label = ch.tier === undefined ? undefined : c.market.stakeLabels[ch.tier];
+        const r = buyItem(s, item, rng, ch.stake, label);
+        if (r.gamble) {
+          const lines = c.market.lines[item.id];
+          const line = lines ? byYear(r.gamble.ok ? lines.win : lines.lose, s.year) : '';
+          const allInLost = !r.gamble.ok && r.gamble.stake === s.assets;
+          const money = `${r.gamble.stake.toLocaleString('ko-KR')}만원 → ${r.gamble.back.toLocaleString('ko-KR')}만원`;
+          const detail = [line, allInLost ? byYear(c.market.allInLose, s.year) : '', money].filter(Boolean).join(' ');
+          result = { title: label ? `${item.name} · ${label}` : item.name, ok: r.gamble.ok, detail };
+        } else result = { title: item.name };
         s = r.state;
         feed.push(...r.feed);
       } else feed.push('이번엔 지갑을 닫는다');
@@ -210,8 +291,9 @@ export function apply(g: Game, input: Input, c: Content): Game {
       throw new Error(`no input expected for ${p.kind}`);
   }
 
+  const outcome = result && { ...result, deltas: diffState(before, s, c) };
   return drain(
-    { ...g, rngState: rng.getState(), state: s, queue: [...front, ...g.queue.slice(1)], log: [...g.log, input], feed },
+    { ...g, rngState: rng.getState(), state: s, queue: [...front, ...g.queue.slice(1)], log: [...g.log, input], feed, outcome },
     c,
   );
 }
@@ -238,15 +320,30 @@ function drain(g: Game, c: Content): Game {
     if (p.kind === 'review') {
       const rng = createRng(game.rngState);
       const r = review(game.state, rng, c);
+      let state = r.state;
+      const feed = [...r.feed];
       const q: Pending[] = [];
-      if (!r.state.retired) {
-        const items = pickShopItems(r.state, rng, c);
+      let closed = false;
+      if (!state.retired) {
+        const grown = growCompany(state, rng, c);
+        closed = grown.closed;
+        state = grown.state;
+        feed.push(...grown.feed);
+      }
+      // 엑싯처럼 성장 판정으로 은퇴했으면 협상·상점·제안 없이 엔딩으로 간다
+      if (!state.retired) {
+        // 올해 연말 상점의 시장 분위기 (은퇴한 해에는 굴리지 않는다)
+        state = { ...state, market: nextMarket(state.market, rng, c) };
+        if (r.rating >= NEGOTIATE_MIN_RATING && state.yearsAtCompany >= NEGOTIATE_MIN_YEARS_AT_COMPANY && !closed && !state.flags.includes('founder'))
+          q.push({ kind: 'negotiate', rating: r.rating, base: state.salary, prev: game.state.salary, prevMax: game.state.maxSalary });
+        const items = pickShopItems(state, rng, c);
         if (items.length > 0) q.push({ kind: 'shop', items });
-        const offers = generateOffers(r.state, rng, c);
-        if (offers.length > 0) q.push({ kind: 'offers', offers });
+        const offers = generateOffers(state, rng, c, { forced: closed });
+        if (closed) q.push({ kind: 'offers', offers, forced: true });
+        else if (offers.length > 0) q.push({ kind: 'offers', offers });
         q.push({ kind: 'year' });
       }
-      game = { ...game, rngState: rng.getState(), state: r.state, queue: [...q, ...game.queue.slice(1)], feed: [...game.feed, ...r.feed] };
+      game = { ...game, rngState: rng.getState(), state, queue: [...q, ...game.queue.slice(1)], feed: [...game.feed, ...feed] };
       continue;
     }
     return game;

@@ -1,0 +1,6 @@
+.detail { margin: -8px 0 12px; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--critical); background: color-mix(in srgb, var(--critical) 10%, transparent); }
+.chip[data-good='true'] { color: var(--good); background: color-mix(in srgb, var(--good) 10%, transparent); }
+.none { margin: 0; font-size: 13px; color: var(--text-2); }
+.cta { display: flex; justify-content: flex-end; margin-top: 16px; padding-bottom: env(safe-area-inset-bottom); }

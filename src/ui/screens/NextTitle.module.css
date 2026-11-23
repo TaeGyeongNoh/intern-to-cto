@@ -1,0 +1,5 @@
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 12px; color: var(--text-2); min-width: 0; }
+.label { font-weight: 500; }
+.req { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.req::before { content: '·'; margin-right: 8px; color: var(--text-2); }
+.req[data-ok='false'] { color: var(--warning); font-weight: 700; }

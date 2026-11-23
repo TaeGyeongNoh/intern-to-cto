@@ -1,3 +1,4 @@
+import { effectiveCompany, isClosed } from './company';
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import type { Rng } from './rng';
@@ -35,8 +36,11 @@ function makeOffer(co: Company, s: GameState, o: number): Offer {
   };
 }
 
-export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
+/** forced: 지금 회사가 문을 닫아 남을 수 없다. 제안이 0건이면 같은 루트에서 한 곳을 채운다 */
+export function generateOffers(s: GameState, rng: Rng, c: Content, opts: { forced?: boolean } = {}): Offer[] {
   if (s.flags.includes('founder')) return [];
+  // 대체복무 중에는 제안이 없다. 회사가 문을 닫으면(forced) 다른 곳으로 옮겨 남은 복무를 잇는다
+  if (s.yearsInCareer < s.boundUntil && !opts.forced) return [];
   const o = ovr(s.stats, s.position);
   const n = rng.weighted([
     { item: 0, weight: 40 - s.reputation / 4 },
@@ -45,7 +49,7 @@ export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
     { item: 3, weight: 5 + s.reputation / 10 },
   ]);
   const maxLevel = o + 3 + Math.floor(s.reputation / 10);
-  const pool = Object.values(c.companies).filter(
+  const pool = Object.keys(c.companies).filter((id) => !isClosed(s, id)).map((id) => effectiveCompany(id, s, c)).filter(
     (co) => !co.hidden && co.id !== s.companyId && co.level >= o - 20 && co.level <= maxLevel && !(co.tiny && o > co.level + TINY_OUTGROW),
   );
   const offers: Offer[] = [];
@@ -54,7 +58,15 @@ export function generateOffers(s: GameState, rng: Rng, c: Content): Offer[] {
     pool.splice(pool.indexOf(co), 1);
     offers.push(makeOffer(co, s, o));
   }
-  const whatap = c.companies[WHATAP_ID];
+  if (opts.forced && offers.length === 0) {
+    const fallback = Object.keys(c.companies)
+      .filter((id) => id !== s.companyId && !isClosed(s, id))
+      .map((id) => effectiveCompany(id, s, c))
+      .filter((co) => !co.hidden && co.route === s.route)
+      .sort((a, b) => Math.abs(a.level - o) - Math.abs(b.level - o))[0];
+    if (fallback) offers.push(makeOffer(fallback, s, o));
+  }
+  const whatap = c.companies[WHATAP_ID] && effectiveCompany(WHATAP_ID, s, c);
   if (whatap && s.companyId !== WHATAP_ID && scoutEligible(s) && rng.chance(SCOUT_CHANCE)) offers.push({ ...makeOffer(whatap, s, o), special: 'whatap-scout' });
   return offers;
 }
@@ -72,6 +84,7 @@ function enterCompany(s: GameState, co: Company, salary: number): GameState {
     maxSalary: Math.max(s.maxSalary, salary),
     burnout: clamp(s.burnout - 15, 0, 100),
     scheduled: [],
+    stock: undefined,
   };
 }
 
@@ -83,14 +96,15 @@ export const resolveCompanyId = (id: string, route: string): string => id.replac
  * 커리어 시작 전(프롤로그)이라면 첫 회사를 바꿔치기한다: 시작 회사에서 일한 적이 없으니 경력 목록을 새로 쓴다.
  */
 export function moveToCompany(s: GameState, companyId: string, c: Content): GameState {
-  const co = c.companies[resolveCompanyId(companyId, s.route)];
-  if (!co) throw new Error(`unknown company ${companyId}`);
+  const id = resolveCompanyId(companyId, s.route);
+  if (!c.companies[id]) throw new Error(`unknown company ${companyId}`);
+  const co = effectiveCompany(id, s, c);
   const moved = enterCompany(s, co, co.baseSalary);
   return s.yearsInCareer === 0 ? { ...moved, companiesWorked: [co.id] } : moved;
 }
 
 export function joinCompany(s: GameState, offer: Offer, c: Content): GameState {
-  const co = c.companies[offer.companyId];
+  const co = effectiveCompany(offer.companyId, s, c);
   const next = enterCompany(s, co, offer.salary);
   if (offer.special === 'whatap-scout') {
     return applyEffects(next, { flags: ['whatap-joined'], traits: { 관측성전도사: 2 }, story: '와탭랩스의 스카우트 제안을 받아들였다.' });

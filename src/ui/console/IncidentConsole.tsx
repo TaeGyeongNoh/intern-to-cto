@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react';
 import { CONTENT } from '../../content';
 import { CARDS, VIEW_LABELS } from '../../content/cards';
 import { pending, validInputs, type Game, type Input } from '../../engine/game';
-import { actionChance } from '../../engine/incident';
+import { actionChance, isOffRole } from '../../engine/incident';
+import { POSITION_LABELS } from '../../engine/stats';
 import type { CardDef, IncidentOption, ViewId } from '../../engine/types';
 import { Button, CardIcon } from '../components/Icon';
-import { ChevronLeft, ChevronRight, ChevronUp, IconText, Lock, Search, Siren, Sparkles, Wrench } from '../components/Icons';
+import { ChevronLeft, ChevronRight, ChevronUp, IconText, LifeBuoy, Lock, Search, Siren, Sparkles, Wrench } from '../components/Icons';
 import { pct } from '../screens/format';
 import { AIDrawer, type AIChip, type AIMessage } from './AIDrawer';
 import { WIDGETS } from './widgets';
 import s from './IncidentConsole.module.css';
 
 /** 방금 연 뷰의 결과. 엔진은 이미 다음 단계로 넘어갔어도 "다음"을 누를 때까지 보여준다. */
-type Inspect = { step: number; picked: number; view: ViewId; correct: boolean; clue?: string; label: string };
+type Inspect = { step: number; picked: number; view: ViewId; correct: boolean; clue?: string; label: string; order: number[] };
 
 const cardForView = (view: ViewId): CardDef | undefined => Object.values(CARDS).find((c) => c.views.includes(view));
 
@@ -61,15 +62,19 @@ export function IncidentConsole({ game, onInput }: { game: Game; onInput: (i: In
   const canAsk = valid.some((v) => v.t === 'ask');
   const hasAI = st.deck.includes('whatap-ai');
   const total = inc.steps.length;
+  const offRole = isOffRole(inc, st.position);
+  const owners = (inc.positions ?? []).map((id) => POSITION_LABELS[id]).join('·');
 
   // 사이드바와 상단 문구는 inspect 중이면 방금 고른 단계를 기준으로 그린다
   const shownStep = inspect ? inspect.step : p.kind === 'incident-step' ? p.step : null;
   const step = shownStep === null ? undefined : inc.steps[shownStep];
   const doneSteps = inspect ? inspect.step + 1 : p.kind === 'incident-step' ? p.step : total;
 
+  const order = inspect ? inspect.order : p.kind === 'incident-step' ? p.order : [];
+
   const pickOption = (i: number, o: IncidentOption) => {
     if (inspect || p.kind !== 'incident-step' || !canPick(i)) return;
-    setInspect({ step: p.step, picked: i, view: o.view, correct: o.correct, clue: o.clue, label: o.label });
+    setInspect({ step: p.step, picked: i, view: o.view, correct: o.correct, clue: o.clue, label: o.label, order: p.order });
     onInput({ t: 'pick', i });
   };
 
@@ -99,8 +104,8 @@ export function IncidentConsole({ game, onInput }: { game: Game; onInput: (i: In
       : p.kind === 'incident-action' ? '원인 분석은 끝났어요. 이제 조치할 시간!'
         : inspect ? '결과를 확인하고 다음 단계에서 물어보세요' : undefined;
 
-  const firstOpen = step?.options.findIndex((_, i) => canPick(i)) ?? -1;
-  const previewView = step ? step.options[Math.max(0, firstOpen)].view : undefined;
+  const firstOpen = order.find((i) => canPick(i)) ?? order[0] ?? 0;
+  const previewView = step ? step.options[firstOpen].view : undefined;
 
   return (
     <div className={s.root} data-theme="dark">
@@ -126,7 +131,8 @@ export function IncidentConsole({ game, onInput }: { game: Game; onInput: (i: In
         <nav className={s.side} aria-label="분석 화면">
           <div className={s.sideTitle}>{step ? '분석 화면' : '조치'}</div>
           {step ? (
-            step.options.map((o, i) => {
+            order.map((i) => {
+              const o = step.options[i];
               const card = cardForView(o.view);
               const open = canPick(i) || (!!inspect && inspect.picked === i);
               const active = inspect?.picked === i;
@@ -161,6 +167,11 @@ export function IncidentConsole({ game, onInput }: { game: Game; onInput: (i: In
         </nav>
 
         <main className={s.main}>
+          {offRole && (
+            <div className={s.offRole}>
+              <IconText icon={LifeBuoy} tone="warning" size={14}>지원 호출 · {owners} 장애에 불려 왔다</IconText>
+            </div>
+          )}
           {p.kind === 'incident-step' && p.step === 0 && !inspect && (
             <div className={s.alarm} role="alert">
               <span className={s.alarmBadge}>CRITICAL</span>

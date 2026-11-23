@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { CONTENT } from '../../content';
 import { CARDS } from '../../content/cards';
+import { companyStageName, effectiveCompany } from '../../engine/company';
 import { pending, validInputs, type Game, type Input } from '../../engine/game';
 import { ROLE_LABELS, roleFor } from '../../engine/roles';
 import { ovr, POSITION_LABELS } from '../../engine/stats';
@@ -9,6 +10,8 @@ import { Button, Chip, StatBar } from '../components/Icon';
 import { ArrowDown, ArrowUp, ChevronRight, EyeOff, Flame, IconText, PiggyBank, Wallet } from '../components/Icons';
 import { feedIcon, TIER_LABELS, won } from './format';
 import { AVATARS } from '../art';
+import { NextTitle } from './NextTitle';
+import { OwnedItems } from './OwnedItems';
 import { Pill, RouteBadge } from './RouteBadge';
 import c from './common.module.css';
 import s from './HomeScreen.module.css';
@@ -27,7 +30,8 @@ function deckQuip(deck: readonly CardId[]): string {
 
 export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; onInput: (i: Input) => void }) {
   const st = game.state;
-  const co = CONTENT.companies[st.companyId];
+  const co = effectiveCompany(st.companyId, st, CONTENT);
+  const stage = companyStageName(st, st.companyId, CONTENT);
   const archetype = CONTENT.archetypes[st.archetypeId];
   const o = ovr(st.stats, st.position);
   const role = roleFor(o, co.level);
@@ -55,16 +59,19 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
               {st.title} {POSITION_LABELS[st.position]}
               {archetype && <span className={s.archetype}>{archetype.name}</span>}
             </div>
+            <NextTitle state={st} tier={co.tier} />
             <div className={s.coLine}>
               <b>{co.name}</b>
               <RouteBadge route={co.route} />
-              <span className={s.muted}>{TIER_LABELS[co.tier]}</span>
+              <span className={s.muted}>{stage ? `${TIER_LABELS[co.tier]} · ${stage}` : TIER_LABELS[co.tier]}</span>
             </div>
             <div className={s.coLine}>
               <Pill tone={ROLE_TONE[role]}>{ROLE_LABELS[role]}</Pill>
+              {st.boundUntil > st.yearsInCareer && <Pill tone="var(--warning)">{`복무 중 · ${st.boundUntil - st.yearsInCareer}년 남음`}</Pill>}
               <IconText icon={Wallet} className={s.salary}>{won(st.salary)}</IconText>
               <IconText icon={PiggyBank} className={s.salary}><span className={s.muted}>자산</span> {won(st.assets)}</IconText>
             </div>
+            {st.stock && <div className={s.muted}>{`스톡옵션 ${won(st.stock.value)}어치 · 상장하면 행사, 퇴사하면 소멸`}</div>}
           </div>
           <div className={s.ovrBox}>
             <span className={s.ovrLabel}>OVR</span>
@@ -108,6 +115,7 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
             {ALL_CARDS.map((id) => <Chip key={id} id={id} dim={!st.deck.includes(id)} />)}
           </div>
           <p className={s.quip}>{deckQuip(st.deck)}</p>
+          <OwnedItems state={st} />
         </section>
 
         {/* 기록 타임라인 */}

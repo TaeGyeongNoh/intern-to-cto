@@ -48,4 +48,57 @@ export const PROLOGUE_EVENTS: GameEvent[] = [
       { label: '프리랜서로 버틴다', effects: { stats: { mental: 4 }, burnout: 10, flags: ['freelancer-start'], story: '외주 세 건을 쳐내며 버티다 신입 자리에 들어갔다. 세금 신고는 이제 혼자서도 한다.' } },
     ],
   },
+  // 출신별 첫 장면. 모두 prologue-result·prologue-fail로 합류하거나 첫 회사를 정하고 끝난다.
+  {
+    id: 'prologue-highschool',
+    scheduledOnly: true,
+    when: {},
+    text: '현장실습 3개월 차. 친구들은 수능 기출을 풀고, 너는 운영 서버 로그를 푼다.',
+    choices: [
+      { label: '실습 회사에 그대로 남는다', effects: { company: 'tiny-{route}', stats: { infra: 2, debug: 1 }, story: '실습 마지막 날, 대표님이 사원증을 새로 뽑아 줬다.' } },
+      { label: '공채 고졸 전형에 도전한다', chance: { base: 0.45, stat: 'impl' }, effects: { reputation: 3, story: '고졸 전형 공채에 붙었다. 입사 동기 중 막내다.' }, failEffects: { now: 'prologue-fail' } },
+      { label: '코딩테스트부터 판다', effects: { stats: { impl: 2, debug: 2 }, now: 'prologue-result', story: '실습 일지 쓰는 틈틈이 백준 티어를 올렸다.' } },
+    ],
+  },
+  {
+    id: 'prologue-grad',
+    scheduledOnly: true,
+    when: {},
+    text: '논문 심사 D-14. 교수님이 박사 과정 얘기를 슬쩍 꺼낸다. 이번이 세 번째 슬쩍이다.',
+    choices: [
+      { label: '석사 우대 공채에 지원한다', chance: { base: 0.6, stat: 'design' }, effects: { reputation: 3, story: '석사 우대 전형으로 입사했다. 논문은 아무도 안 물어봤다.' }, failEffects: { now: 'prologue-fail' } },
+      { label: '연구실 선배 스타트업에 합류한다', effects: { company: 'tiny-{route}', stats: { ai: 2 }, story: '선배가 "딱 1년만"이라며 불렀다. 그 1년은 아직 안 끝났다.' } },
+      { label: '박사는 정중히 거절하고 코테를 판다', effects: { stats: { impl: 2 }, now: 'prologue-result', story: '교수님께 박사 대신 감사 인사를 드렸다. 그날부터 코테를 팠다.' } },
+    ],
+  },
+  {
+    id: 'prologue-switch',
+    scheduledOnly: true,
+    when: {},
+    text: '부트캠프 수료 D-30. 전 직장 동기들은 대리를 달았고, 너는 오늘 처음으로 rebase 충돌을 혼자 풀었다.',
+    choices: [
+      { label: '수료 프로젝트에 올인한다', effects: { stats: { design: 2, ai: 2 }, now: 'prologue-result', story: '수료 프로젝트로 데모데이 1등을 했다. 상품은 키보드.' } },
+      { label: '전 직장 도메인을 무기로 지원한다', chance: { base: 0.5, stat: 'mental' }, effects: { reputation: 3, story: '면접관이 내 전 직장 이야기에서 눈을 반짝였다.' }, failEffects: { now: 'prologue-result' } },
+    ],
+  },
+  {
+    id: 'prologue-service-industrial',
+    scheduledOnly: true,
+    when: {},
+    text: '병역지정업체 목록을 펼쳤다. 3년을 다닐 회사라 점심 메뉴 고를 때보다 진지해진다.',
+    choices: [
+      { label: '규모 있는 지정업체에 지원한다', chance: { base: 0.5, stat: 'impl' }, effects: { bound: 3, story: '산업기능요원으로 일하게 됐다. 앞으로 34개월은 이 회사가 곧 병역이다.' }, failEffects: { company: 'tiny-{route}', bound: 3, story: '결국 작은 지정업체에 자리를 얻었다.' } },
+      { label: '작은 지정업체에 바로 들어간다', effects: { company: 'tiny-{route}', bound: 3, stats: { impl: 1, infra: 1 }, story: '직원 일곱 명 회사에서 서버, 프론트, 프린터 수리까지 맡았다.' } },
+    ],
+  },
+  {
+    id: 'prologue-service-research',
+    scheduledOnly: true,
+    when: {},
+    text: '전문연구요원 TO가 난 곳은 세 군데. 경쟁률이 내 논문 인용 수보다 높다.',
+    choices: [
+      { label: '기업 부설 연구소에 지원한다', chance: { base: 0.55, stat: 'ai' }, effects: { bound: 3, stats: { ai: 2 }, story: '기업 부설 연구소에서 전문연구요원으로 복무를 시작했다.' }, failEffects: { company: 'tiny-{route}', bound: 3, story: '연구실 스핀오프로 복무지를 옮겼다.' } },
+      { label: '연구실 스핀오프에 합류한다', effects: { company: 'tiny-{route}', bound: 3, stats: { ai: 3 }, story: '교수님 회사에서 복무를 시작했다. 출근 첫날 회의 주제는 논문이었다.' } },
+    ],
+  },
 ];

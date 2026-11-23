@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CONTENT } from '../../content';
 import { CARDS } from '../../content/cards';
 import type { Game } from '../../engine/game';
+import { educationLabel } from '../../engine/origin';
 import { ovr, POSITION_LABELS } from '../../engine/stats';
 import type { CardId } from '../../engine/types';
 import { Button, Chip } from '../components/Icon';
@@ -35,6 +36,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
   const isWhatap = st.endingId === 'whatap';
   const art = st.endingId ? ENDING_ART[st.endingId] : undefined;
   const badges = purchaseBadges(st.purchases);
+  const invested = st.purchases.some((id) => CONTENT.shop[id]?.category === 'invest');
   const { toast, show } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -94,7 +96,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
         <h1 className={s.title}>{ending?.title ?? '커리어 종료'}</h1>
         <p className={s.desc}>{ending?.description}</p>
         <div className={s.who}>
-          {st.name} · {st.title} {POSITION_LABELS[st.position]}{CONTENT.archetypes[st.archetypeId] ? ` · ${CONTENT.archetypes[st.archetypeId].name}` : ''} · {st.age}세 · OVR {ovr(st.stats, st.position)}
+          {st.name} · {st.title} {POSITION_LABELS[st.position]}{CONTENT.archetypes[st.archetypeId] ? ` · ${CONTENT.archetypes[st.archetypeId].name}` : ''}{educationLabel(game.setup, CONTENT) ? ` · ${educationLabel(game.setup, CONTENT)}` : ''} · {st.age}세 · OVR {ovr(st.stats, st.position)}
         </div>
       </header>
 
@@ -103,6 +105,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
           <Stat label="커리어" value={`${years}년`} />
           <Stat label="최고 연봉" value={won(st.maxSalary)} />
           <Stat label="순자산" value={won(st.assets)} />
+          {invested && <Stat label="투자 손익" value={`${st.investNet >= 0 ? '+' : '−'}${won(Math.abs(st.investNet))}`} />}
           <Stat label="막아낸 장애" value={`${r.incidentsResolved}/${r.incidentsTotal}`} />
           <Stat label="평균 MTTR" value={r.incidentsTotal ? `${avgMttr}분` : '—'} />
           <Stat label="거쳐 간 회사" value={`${st.companiesWorked.length}곳`} />

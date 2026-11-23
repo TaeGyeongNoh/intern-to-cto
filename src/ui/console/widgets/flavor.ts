@@ -294,6 +294,76 @@ const PATCHES: Record<string, Patch> = {
     rum: { pages: ['/', '/products', '/products/:id', '/cart', '/checkout', '/mypage'], hot: ['/checkout'], note: 'Samsung Internet 14 · iOS Safari 13' },
   },
 
+  'cdn-cache': {
+    service: 'web-frontend',
+    trace: {
+      endpoint: 'GET /',
+      texts: {
+        method: ['SsrController.render()', 'AssetManifest.load()', 'LayoutRenderer.render()'],
+        dbc: ['redis://session:6379'],
+        sql: ['GET session:{id}'],
+        httpc: ['GET https://cdn.example/static/js/chunk-7a1e.js', 'GET https://cdn.example/index.html'],
+      },
+      slow: { type: 'httpc', text: 'GET https://cdn.example/static/js/chunk-7a1e.js — 404 (삭제된 옛 청크)', ms: [40, 120] },
+    },
+    logs: {
+      info: ['GET / 200 18ms', 'GET /static/js/main.%d.js 200 3ms', 'cdn cache HIT /index.html'],
+      warn: ['RUM: ChunkLoadError spike (12% of sessions)', 'cdn cache HIT /index.html age=3412s'],
+      error: ['ChunkLoadError: Loading chunk 7a1e failed', 'GET /static/js/chunk-7a1e.js 404'],
+      key: { level: 'WARN', msg: 'cdn rule: /index.html Cache-Control max-age=3600 (old build still served)' },
+      query: 'service:web-frontend ChunkLoadError OR index.html',
+    },
+    topology: { app: { abbr: 'WEB', label: 'web-frontend' }, db: { abbr: 'ORG', label: 'origin' }, ext: [{ abbr: 'CDN', label: 'CDN' }], bad: 'ext' },
+    pods: { apps: ['web-frontend'] },
+    rum: { pages: ['/', '/products', '/products/:id', '/cart', '/checkout', '/mypage'], hot: ['/', '/products'], note: 'ChunkLoadError · 일부 세션' },
+  },
+
+  'lcp-regression': {
+    service: 'web-frontend',
+    trace: {
+      endpoint: 'GET /',
+      texts: {
+        method: ['SsrController.render()', 'BannerService.list()', 'LayoutRenderer.render()'],
+        dbc: ['jdbc:mysql://cms-db:3306/cms'],
+        sql: ['SELECT * FROM banner WHERE active = 1'],
+        httpc: ['GET https://cdn.example/img/hero-banner.png'],
+      },
+      slow: { type: 'method', text: 'SsrController.render() — 48ms (서버는 정상)', ms: [30, 60] },
+    },
+    logs: {
+      info: ['GET / 200 48ms', 'GET /img/hero-banner.png 200 6.8s', 'campaign traffic x3'],
+      warn: ['RUM: LCP p75 7.2s on / (was 1.8s)', 'image payload 12.4MB on /'],
+      error: ['bounce rate alert: / 61%'],
+      key: { level: 'INFO', msg: 'cms publish: hero-banner.png replaced (12.4MB, 6000x3000 PNG)' },
+      query: 'service:web-frontend hero-banner OR LCP',
+    },
+    pods: { apps: ['web-frontend', 'cms-api'] },
+    rum: { pages: ['/', '/products', '/event', '/cart', '/checkout', '/mypage'], hot: ['/', '/event'], note: 'LCP 7.2s · 모바일' },
+  },
+
+  'spa-memory-leak': {
+    service: 'ops-dashboard',
+    trace: {
+      endpoint: 'GET /ws/metrics',
+      texts: {
+        method: ['MetricsSocket.onSubscribe()', 'MetricsHub.broadcast()', 'SessionRegistry.add()'],
+        dbc: ['redis://pubsub:6379'],
+        sql: ['SUBSCRIBE metrics:*'],
+        httpc: ['GET http://metrics-api/v1/series'],
+      },
+      slow: { type: 'method', text: 'SessionRegistry.add() — 같은 사용자 연결 37개', ms: [5, 20] },
+    },
+    logs: {
+      info: ['GET /dashboard 200 22ms', 'tab switched: /dashboard/servers', 'ws connected user=%d'],
+      warn: ['ws subscribe metrics:* (active=37, user=ops-kim)', 'RUM: JS heap 1.9GB on /dashboard'],
+      error: ['Page unresponsive: /dashboard', 'Out of memory (tab crashed)'],
+      key: { level: 'WARN', msg: 'ws subscribe metrics:* on tab switch — no matching unsubscribe in 6h' },
+      query: 'service:ops-dashboard "ws subscribe"',
+    },
+    pods: { apps: ['ops-dashboard', 'metrics-api'] },
+    rum: { pages: ['/dashboard', '/dashboard/servers', '/dashboard/db', '/alerts', '/settings'], hot: ['/dashboard', '/dashboard/servers'], note: '세션 6시간 이상' },
+  },
+
   'gpu-oom': {
     service: 'inference-api',
     trace: {

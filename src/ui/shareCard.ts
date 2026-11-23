@@ -1,6 +1,7 @@
 import { CONTENT } from '../content';
 import { CARDS } from '../content/cards';
 import type { Game } from '../engine/game';
+import { educationLabel } from '../engine/origin';
 import { POSITION_LABELS } from '../engine/stats';
 import { ENDING_ART } from './art';
 import { won } from './screens/format';
@@ -38,7 +39,7 @@ export function cardData(g: Game): CardData {
   return {
     endingId: st.endingId ?? 'ending',
     title: ending?.title ?? '커리어 종료',
-    who: [st.name, st.title, POSITION_LABELS[st.position], CONTENT.archetypes[st.archetypeId]?.name, `${years}년`].filter(Boolean).join(' · '),
+    who: [st.name, st.title, POSITION_LABELS[st.position], CONTENT.archetypes[st.archetypeId]?.name, educationLabel(g.setup, CONTENT), `${years}년`].filter(Boolean).join(' · '),
     stats: [
       { label: '막아낸 장애', value: `${r.incidentsResolved}/${r.incidentsTotal}` },
       { label: '평균 MTTR', value: avgMttr },

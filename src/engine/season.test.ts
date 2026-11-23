@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { withJosa } from './josa';
 import { createRng } from './rng';
-import { ageFactor, RETIRE_AGE, review, runYear } from './season';
+import { PROMOTION_MIN_RATING } from './roles';
+import { ageFactor, CAREER_START_AGE, growthAge, PERF_SKILL_CAP, REPUTATION_BY_RATING, PERF_YEAR_CAP, performance, ratingFromPerf, RETIRE_AGE, review, runYear } from './season';
 import { makeState } from './testing';
 
 const total = (s: Record<string, number>) => Object.values(s).reduce((a, b) => a + b, 0);
@@ -13,6 +14,30 @@ describe('ageFactor', () => {
     expect(ageFactor(40, 'normal')).toBe(0);
     expect(ageFactor(23, 'early')).toBe(1.3);
     expect(ageFactor(40, 'late')).toBe(0.2);
+  });
+});
+
+describe('growthAge', () => {
+  it('22세에 시작한 판은 실제 나이 그대로 (옛 기록 호환)', () => {
+    for (const y of [0, 5, 20]) expect(growthAge(makeState({ age: CAREER_START_AGE + y, yearsInCareer: y }))).toBe(CAREER_START_AGE + y);
+  });
+  it('성장 나이는 연차를 따른다: 몇 살에 시작했든 신입은 신입처럼 배운다', () => {
+    expect(growthAge(makeState({ age: 26, yearsInCareer: 0 }))).toBe(22);
+    expect(growthAge(makeState({ age: 25, yearsInCareer: 5 }))).toBe(27);
+  });
+  it('쇠퇴는 실제 나이를 본다: 같은 5년차라도 쇠퇴 나이를 넘긴 쪽이 덜 큰다', () => {
+    for (let seed = 1; seed < 20; seed++) {
+      const young = makeState({ age: 30, yearsInCareer: 5, growthType: 'normal', potential: 95 });
+      const old = { ...young, age: 45 };
+      expect(total(runYear(old, createRng(seed), CONTENT).state.stats)).toBeLessThan(total(runYear(young, createRng(seed), CONTENT).state.stats));
+    }
+  });
+  it('늦게 시작한 신입도 첫해 성장은 신입 수준', () => {
+    const late = makeState({ potential: 95, age: 28, yearsInCareer: 0, growthType: 'normal' });
+    for (let seed = 1; seed < 30; seed++) {
+      const gain = total(runYear(late, createRng(seed), CONTENT).state.stats) - total(late.stats);
+      expect(gain).toBeGreaterThanOrEqual(13);
+    }
   });
 });
 
@@ -30,6 +55,14 @@ describe('runYear', () => {
     const s = makeState({ potential: 95 });
     expect(total(runYear(s, createRng(2), CONTENT).state.stats)).toBeGreaterThan(total(s.stats));
   });
+  it('젊은 메인 역할의 한 해 성장 포인트는 13~19 (시니어까지 7년 안팎)', () => {
+    for (let seed = 1; seed < 60; seed++) {
+      const s = makeState({ potential: 95, age: 24, growthType: 'normal' });
+      const gain = total(runYear(s, createRng(seed), CONTENT).state.stats) - total(s.stats);
+      expect(gain).toBeGreaterThanOrEqual(13);
+      expect(gain).toBeLessThanOrEqual(19);
+    }
+  });
   it('쇠퇴 나이 이후엔 능력치 합이 줄어든다', () => {
     const s = makeState({ age: 45, growthType: 'normal' });
     expect(total(runYear(s, createRng(3), CONTENT).state.stats)).toBeLessThan(total(s.stats));
@@ -41,6 +74,16 @@ describe('runYear', () => {
 });
 
 describe('review', () => {
+  it('대체복무가 끝나는 해 연말에 feed와 story를 남긴다', () => {
+    const name = CONTENT.companies[makeState().companyId].name;
+    const done = review(makeState({ yearsInCareer: 3, boundUntil: 3, year: 2028 }), createRng(5), CONTENT);
+    expect(done.feed).toContain('복무 완료 · 이제 이직 제안을 받을 수 있다');
+    expect(done.state.record.story).toContain(`2028년 · ${name}에서 대체복무를 마쳤다.`);
+    for (const [y, b] of [[2, 3], [4, 3], [0, 0]]) {
+      const r = review(makeState({ yearsInCareer: y, boundUntil: b }), createRng(5), CONTENT);
+      expect(r.feed.join('\n')).not.toContain('복무 완료');
+    }
+  });
   it('그 해 연봉의 25%를 저축하고 히스토리에 순자산을 남긴다', () => {
     const r = review(makeState({ salary: 8000, assets: 1000 }), createRng(5), CONTENT);
     expect(r.state.assets).toBe(3000);
@@ -77,7 +120,7 @@ describe('review', () => {
     expect(r.state.record.story.join('\n')).not.toContain('승진');
   });
   it('실제로 직급이 오르면 승진으로 기록한다', () => {
-    const s = makeState({ title: '주니어', stats: { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 } });
+    const s = makeState({ title: '주니어', yearsInCareer: 8, stats: { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 } });
     const r = review(s, createRng(9), CONTENT);
     expect(r.state.title).not.toBe('주니어');
     expect(r.feed.join('\n')).toContain(`${withJosa(r.state.title, '(으)로')} 승진!`);
@@ -104,5 +147,73 @@ describe('review 연봉', () => {
   it('히스토리에 연봉을 남긴다', () => {
     const r = review(makeState(), createRng(5), CONTENT).state;
     expect(r.record.history[0].salary).toBe(r.salary);
+  });
+});
+
+describe('승진 보류', () => {
+  const strong = { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 };
+  /** 원하는 별점이 나오는 시드를 찾아 review를 돌린다 */
+  const reviewWithRating = (s: ReturnType<typeof makeState>, want: (r: number) => boolean) => {
+    for (let seed = 1; seed < 500; seed++) {
+      const r = review(s, createRng(seed), CONTENT);
+      if (want(r.rating)) return r;
+    }
+    throw new Error('no seed');
+  };
+  it('조건을 채웠어도 별점 2 이하면 직급을 올리지 않고 승진 보류를 알린다', () => {
+    const s = makeState({ title: '주니어', yearsInCareer: 15, stats: strong, yearScore: -50 });
+    const r = reviewWithRating(s, (x) => x <= 2);
+    expect(r.state.title).toBe('주니어');
+    expect(r.state.record.history.at(-1)?.title).toBe('주니어');
+    expect(r.feed.join('\n')).toContain('승진 보류');
+    expect(r.feed.join('\n')).not.toContain('승진!');
+  });
+  it('별점 3 이상이면 승진한다', () => {
+    const s = makeState({ title: '주니어', yearsInCareer: 15, stats: strong });
+    const r = reviewWithRating(s, (x) => x >= PROMOTION_MIN_RATING);
+    expect(r.state.title).not.toBe('주니어');
+    expect(r.feed.join('\n')).toContain('승진!');
+  });
+  it('팀장 발령은 별점과 무관하다', () => {
+    const s = makeState({ title: '프린시펄', track: 'mgmt', yearScore: -12 });
+    const r = reviewWithRating(s, (x) => x <= 2);
+    expect(r.state.title).toBe('팀장');
+  });
+});
+
+describe('연말 평가 (상대평가)', () => {
+  it('실력 차이는 ±PERF_SKILL_CAP까지만, 절반 무게로 반영한다', () => {
+    expect(performance(90, 40, 0, 0)).toBe(performance(40 + PERF_SKILL_CAP, 40, 0, 0));
+    expect(performance(40 + PERF_SKILL_CAP, 40, 0, 0)).toBe(PERF_SKILL_CAP / 2);
+    expect(performance(20, 60, 0, 0)).toBe(-PERF_SKILL_CAP / 2);
+    expect(performance(44, 40, 0, 0)).toBe(2);
+  });
+  it('그 해 장애 성적은 ±PERF_YEAR_CAP까지만', () => {
+    expect(performance(40, 40, -20, 0)).toBe(-PERF_YEAR_CAP);
+    expect(performance(40, 40, 30, 0)).toBe(PERF_YEAR_CAP);
+    expect(performance(40, 40, 3, 2)).toBe(5);
+  });
+  it('별점 문턱', () => {
+    expect([-9, -8, -5, -4, 3, 4, 8, 9].map(ratingFromPerf)).toEqual([1, 2, 2, 3, 3, 4, 4, 5]);
+  });
+  it('평판은 별점표대로: B(3점)도 조금 쌓이고 C·D는 깎인다', () => {
+    expect(REPUTATION_BY_RATING[3]).toBeGreaterThan(0);
+    expect(REPUTATION_BY_RATING[2]).toBeLessThan(0);
+    for (let k = 1; k < 5; k++) expect(REPUTATION_BY_RATING[k + 1]).toBeGreaterThan(REPUTATION_BY_RATING[k]);
+    for (let seed = 1; seed <= 20; seed++) {
+      const r = review(makeState({ reputation: 40 }), createRng(seed), CONTENT);
+      expect(r.state.reputation).toBe(40 + REPUTATION_BY_RATING[r.rating]);
+    }
+  });
+  it('회사보다 훨씬 잘해도 S는 절반이 안 되고, 평범한 해에는 B가 가장 많다', () => {
+    const tally = (s: ReturnType<typeof makeState>) => {
+      const n = [0, 0, 0, 0, 0, 0];
+      for (let seed = 1; seed <= 400; seed++) n[review(s, createRng(seed), CONTENT).rating] += 1;
+      return n.map((x) => x / 400);
+    };
+    const strong = { impl: 90, design: 90, debug: 90, infra: 90, ai: 90, mental: 90 };
+    expect(tally(makeState({ stats: strong }))[5]).toBeLessThan(0.5);
+    const even = tally(makeState());
+    expect(even[3]).toBeGreaterThan(Math.max(even[1], even[2], even[4], even[5]));
   });
 });

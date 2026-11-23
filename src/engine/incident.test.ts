@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { actionChance, mttrMinutes, optionAvailable, pickIncidents } from './incident';
+import { actionChance, isOffRole, mttrMinutes, OFF_ROLE_WEIGHT, optionAvailable, pickIncidents, shuffledOrder } from './incident';
 import { createRng } from './rng';
 import { makeState } from './testing';
 
@@ -46,7 +46,7 @@ describe('pickIncidents', () => {
       const rest = ids.slice(1);
       expect(rest.length).toBeLessThanOrEqual(2);
       expect(new Set(rest).size).toBe(rest.length);
-      for (const id of rest) expect(['payment-latency', 'oom-kill', 'slow-query']).toContain(id);
+      for (const id of rest) expect(['payment-latency', 'oom-kill', 'slow-query', 'cdn-cache', 'spa-memory-leak']).toContain(id);
     }
   });
 });
@@ -59,9 +59,9 @@ describe('pickIncidents 재발', () => {
 });
 
 describe('장애 콘텐츠', () => {
-  it('9종이 있고 모든 단계에 정답과 grep 선택지가 있다', () => {
+  it('12종이 있고 모든 단계에 정답과 grep 선택지가 있다', () => {
     const list = Object.values(CONTENT.incidents);
-    expect(list).toHaveLength(9);
+    expect(list).toHaveLength(12);
     for (const inc of list)
       for (const st of inc.steps) {
         expect(st.options.some((o) => o.correct)).toBe(true);
@@ -79,5 +79,39 @@ describe('장애 구조', () => {
       expect(inc.actions[0].perClue, inc.id).toBe(0.22);
       expect(inc.aiHint, inc.id).toBeTruthy();
     }
+  });
+});
+
+describe('shuffledOrder', () => {
+  it('0..n-1의 순열이고 같은 rng 상태면 같은 결과', () => {
+    for (let seed = 1; seed < 50; seed++) {
+      const a = shuffledOrder(3, createRng(seed));
+      expect([...a].sort()).toEqual([0, 1, 2]);
+      expect(shuffledOrder(3, createRng(seed))).toEqual(a);
+    }
+  });
+  it('여러 시드에서 0번이 여러 자리에 놓인다', () => {
+    const pos = new Set<number>();
+    for (let seed = 1; seed < 50; seed++) pos.add(shuffledOrder(3, createRng(seed)).indexOf(0));
+    expect(pos.size).toBe(3);
+  });
+});
+
+describe('포지션 가중치', () => {
+  it('positions가 없으면 누구나 주 담당, 있으면 그 포지션만', () => {
+    expect(isOffRole({ ...CONTENT.incidents['db-lock'], positions: undefined }, 'frontend')).toBe(false);
+    expect(isOffRole(CONTENT.incidents['db-lock'], 'backend')).toBe(false);
+    expect(isOffRole(CONTENT.incidents['db-lock'], 'frontend')).toBe(true);
+    expect(OFF_ROLE_WEIGHT).toBe(0.25);
+  });
+  it('주 담당이 아닌 장애는 덜 뽑힌다', () => {
+    // 커머스: 프론트엔드에겐 frontend-js-error만 주 담당이라 slow-query(백엔드 전용)가 확 줄어야 한다
+    const count = (position: 'backend' | 'frontend') => {
+      const s = makeState({ route: 'commerce', position });
+      let n = 0;
+      for (let seed = 1; seed <= 2000; seed++) if (pickIncidents(s, createRng(seed), CONTENT).includes('slow-query')) n++;
+      return n;
+    };
+    expect(count('frontend')).toBeLessThan(count('backend') * 0.6);
   });
 });

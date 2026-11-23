@@ -32,6 +32,7 @@ import {
   House as LHouse,
   Inbox as LInbox,
   Landmark as LLandmark,
+  LifeBuoy as LLifeBuoy,
   Link as LLink,
   Lock as LLock,
   Megaphone as LMegaphone,
@@ -48,6 +49,7 @@ import {
   ShoppingCart as LShoppingCart,
   Siren as LSiren,
   Sparkles as LSparkles,
+  TrendingDown as LTrendingDown,
   TrendingUp as LTrendingUp,
   TriangleAlert as LTriangleAlert,
   UserRoundX as LUserRoundX,
@@ -62,6 +64,16 @@ import {
   PiggyBank as LPiggyBank,
   Store as LStore,
   TreePalm as LTreePalm,
+  Handshake as LHandshake,
+  FilePenLine as LFilePenLine,
+  Ticket as LTicket,
+  Building2 as LBuilding2,
+  School as LSchool,
+  FlaskConical as LFlaskConical,
+  Shuffle as LShuffle,
+  Shield as LShield,
+  Factory as LFactory,
+  Microscope as LMicroscope,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react';
@@ -114,6 +126,7 @@ export const House = make(LHouse, 'House');
 export const Inbox = make(LInbox, 'Inbox');
 export const Landmark = make(LLandmark, 'Landmark');
 export const Link = make(LLink, 'Link');
+export const LifeBuoy = make(LLifeBuoy, 'LifeBuoy');
 export const Lock = make(LLock, 'Lock');
 export const Megaphone = make(LMegaphone, 'Megaphone');
 export const MessageCircle = make(LMessageCircle, 'MessageCircle');
@@ -129,6 +142,7 @@ export const ServerCog = make(LServerCog, 'ServerCog');
 export const ShoppingCart = make(LShoppingCart, 'ShoppingCart');
 export const Siren = make(LSiren, 'Siren');
 export const Sparkles = make(LSparkles, 'Sparkles');
+export const TrendingDown = make(LTrendingDown, 'TrendingDown');
 export const TrendingUp = make(LTrendingUp, 'TrendingUp');
 export const TriangleAlert = make(LTriangleAlert, 'TriangleAlert');
 export const UserRoundX = make(LUserRoundX, 'UserRoundX');
@@ -143,6 +157,16 @@ export const Keyboard = make(LKeyboard, 'Keyboard');
 export const PiggyBank = make(LPiggyBank, 'PiggyBank');
 export const Store = make(LStore, 'Store');
 export const TreePalm = make(LTreePalm, 'TreePalm');
+export const Handshake = make(LHandshake, 'Handshake');
+export const FilePenLine = make(LFilePenLine, 'FilePenLine');
+export const Ticket = make(LTicket, 'Ticket');
+export const Building2 = make(LBuilding2, 'Building2');
+export const School = make(LSchool, 'School');
+export const FlaskConical = make(LFlaskConical, 'FlaskConical');
+export const Shuffle = make(LShuffle, 'Shuffle');
+export const Shield = make(LShield, 'Shield');
+export const Factory = make(LFactory, 'Factory');
+export const Microscope = make(LMicroscope, 'Microscope');
 
 export type IconTone = 'muted' | 'primary' | 'good' | 'warning' | 'critical' | 'inherit';
 

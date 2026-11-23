@@ -1,5 +1,5 @@
 import { josa } from '../../engine/josa';
-import type { CompanyRoute, Tier } from '../../engine/types';
+import type { CompanyRoute } from '../../engine/types';
 import {
   Activity, Calendar, CircleCheck, CircleX, ClipboardList, CornerDownRight, FileText, Flag, House, Minus, PiggyBank, Plane, Search, ShoppingCart, Sparkles, TrendingUp,
   type IconType,
@@ -15,9 +15,7 @@ export function won(v: number): string {
 
 export const pct = (p: number) => `${Math.round(p * 100)}%`;
 
-export const TIER_LABELS: Record<Tier, string> = {
-  startup: '스타트업', mid: '중견', large: '대기업', bigtech: '빅테크', whatap: '관측성 전문',
-};
+export { TIER_LABELS } from '../../engine/types';
 
 export const ROUTE_TONE: Record<CompanyRoute, string> = {
   commerce: '#FF8800', finance: '#00B543', 'ai-startup': '#8B52FF', whatap: '#296CF2',
@@ -45,6 +43,11 @@ export function feedIcon(line: string): { icon: IconType; tone: FeedTone } {
   if (/ — 성공 \(/.test(line)) return { icon: TrendingUp, tone: 'good' };
   if (/ — 실패 \(/.test(line)) return { icon: TrendingUp, tone: 'critical' };
   if (line.startsWith('순자산') || line.includes('지갑을 닫는다')) return { icon: PiggyBank, tone: 'muted' };
+  if (line.startsWith('승진 보류')) return { icon: TrendingUp, tone: 'warning' };
+  if (line.startsWith('스톡옵션')) return { icon: PiggyBank, tone: 'good' };
+  if (line.includes('문을 닫는다')) return { icon: CircleX, tone: 'critical' };
+  if (/(투자를 받았다|시리즈 C를 마쳤다|상장했다)\.?/.test(line)) return { icon: TrendingUp, tone: 'primary' };
+  if (line.startsWith('연봉 협상')) return { icon: ClipboardList, tone: 'muted' };
   if (line.includes('승진')) return { icon: TrendingUp, tone: 'good' };
   if (line.startsWith('복구 실패')) return { icon: CircleX, tone: 'critical' };
   if (line.startsWith('복구')) return { icon: CircleCheck, tone: 'good' };

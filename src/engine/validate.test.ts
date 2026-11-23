@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import type { Content } from './types';
+import type { CardId, Company, Content, GrowthStage } from './types';
 import { validateContent } from './validate';
+
+/** 이벤트를 통째로 바꾸는 테스트용: 프롤로그가 없는 기본 출신만 남긴다 */
+const BASIC_ORIGINS = { educations: { university: CONTENT.educations.university }, services: { none: CONTENT.services.none } };
 
 describe('validateContent', () => {
   it('깨진 next 참조를 잡는다', () => {
@@ -10,6 +13,59 @@ describe('validateContent', () => {
       events: { x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { next: 'nope' } }] } },
     };
     expect(validateContent(c).join('\n')).toContain('unknown event nope');
+  });
+  describe('출신 (학력·병역)', () => {
+    const edu = (over: object, id = 'highschool') => ({ ...CONTENT, educations: { ...CONTENT.educations, [id]: { ...CONTENT.educations[id], ...over } } });
+    const svc = (over: object, id = 'active') => ({ ...CONTENT, services: { ...CONTENT.services, [id]: { ...CONTENT.services[id], ...over } } });
+    const errs = (c: Content) => validateContent(c).join('\n');
+    it('기본 출신은 효과가 없어야 한다 (옛 링크 호환)', () => {
+      expect(errs(edu({ age: 23 }, 'university'))).toContain('education university: default must be age 22 with no effects/salary/prologue');
+      expect(errs(edu({ salary: 100 }, 'university'))).toContain('education university: default must be');
+      expect(errs(edu({ prologue: 'prologue-grad' }, 'university'))).toContain('education university: default must be');
+      expect(errs(svc({ years: 1 }, 'none'))).toContain('service none: default must be 0 years with no effects/salary/prologue/educations');
+      expect(errs(svc({ effects: { stats: { mental: 1 } } }, 'none'))).toContain('service none: default must be');
+      expect(errs(svc({ educations: ['grad'] }, 'none'))).toContain('service none: default must be');
+      const { university: _u, ...rest } = CONTENT.educations;
+      expect(errs({ ...CONTENT, educations: rest })).toContain('missing default education university');
+    });
+    it('key와 id 일치, 나이·햇수 범위', () => {
+      expect(errs({ ...CONTENT, educations: { ...CONTENT.educations, foo: CONTENT.educations.grad } })).toContain('education key foo != id grad');
+      expect(errs(edu({ age: 17 }))).toContain('education highschool: age must be an integer 18-30');
+      expect(errs(edu({ age: 20.5 }))).toContain('education highschool: age must be an integer 18-30');
+      expect(errs(svc({ years: 4 }))).toContain('service active: years must be an integer 0-3');
+    });
+    it('출신 effects는 stats, reputation, flags, story만', () => {
+      for (const f of [{ now: 'prologue-result' }, { company: 'tiny-{route}' }, { bound: 3 }, { salary: 100 }, { retire: true }, { addCards: ['apm'] }, { next: 'prologue-result' }, { burnout: 5 }]) {
+        expect(errs(edu({ effects: f }))).toContain(`education highschool: effects.${Object.keys(f)[0]} not allowed`);
+      }
+      expect(errs(svc({ effects: { salary: 1 } }))).toContain('service active: effects.salary not allowed');
+    });
+    it('프롤로그는 존재하는 scheduledOnly 이벤트', () => {
+      expect(errs(edu({ prologue: 'nope' }))).toContain('education highschool: unknown prologue nope');
+      expect(errs(svc({ prologue: 'founder-offer' }))).toContain('service active: prologue founder-offer must be scheduledOnly');
+    });
+    it('병역의 학력 제한은 있는 학력 id', () => {
+      expect(errs(svc({ educations: ['phd'] }))).toContain('service active: unknown education phd');
+    });
+  });
+  it('bound는 이벤트 선택지에서만, 1~5 정수', () => {
+    const ev = (bound: number) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { bound } }] } } });
+    expect(validateContent(ev(3))).toEqual([]);
+    for (const b of [0, 6, 1.5, -1]) expect(validateContent(ev(b)).join('\n')).toContain('event x#0: bound must be an integer 1-5');
+    const shop = { ...CONTENT, shop: { ...CONTENT.shop, s: { id: 's', name: 's', category: 'rest' as const, price: 10, text: 's', effects: { bound: 2 } } } };
+    expect(validateContent(shop).join('\n')).toContain('shop s: bound is only supported in event choices');
+  });
+  it('minYearsAtCompany는 1 이상이어야 한다 (이벤트·상점)', () => {
+    const c: Content = {
+      ...CONTENT,
+      events: { x: { id: 'x', when: { minYearsAtCompany: 0 }, text: 'x', choices: [{ label: 'a', effects: {} }] } },
+      shop: { s: { id: 's', name: 's', category: 'rest', price: 10, text: 's', when: { minYearsAtCompany: 0.5 }, effects: {} } },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('event x: minYearsAtCompany must be an integer >= 1');
+    expect(errs).toContain('shop s: minYearsAtCompany must be an integer >= 1');
+    const ok: Content = { ...CONTENT, ...BASIC_ORIGINS, events: { x: { id: 'x', when: { minYearsAtCompany: 1 }, text: 'x', choices: [{ label: 'a', effects: {} }] } } };
+    expect(validateContent(ok)).toEqual([]);
   });
   it('requires 없는 선택지가 하나도 없으면 잡는다', () => {
     const c: Content = {
@@ -39,6 +95,7 @@ describe('validateContent', () => {
   it('now로만 닿는 scheduledOnly 이벤트는 괜찮다', () => {
     const c: Content = {
       ...CONTENT,
+      ...BASIC_ORIGINS,
       events: {
         x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { now: 'y' } }] },
         y: { id: 'y', when: {}, scheduledOnly: true, text: 'y', choices: [{ label: 'b', effects: {} }] },
@@ -52,7 +109,7 @@ describe('validateContent', () => {
       shop: {
         a: { id: 'a', name: 'a', category: 'gear', price: 0, text: 'a', effects: { now: 'x' } },
         b: { id: 'b', name: 'b', category: 'life', price: 10, text: 'b', when: { flags: ['shop:nope'] }, effects: {} },
-        c: { id: 'c', name: 'c', category: 'invest', price: 10, text: 'c', effects: {}, gamble: { chance: 1.5, win: 2, lose: 0 } },
+        c: { id: 'c', name: 'c', category: 'invest', price: 100, once: false, text: 'c', effects: {}, gamble: { chance: { bull: 1.5, flat: 0.5, bear: 0.5 }, win: 2, lose: 0 } },
       },
     };
     const errs = validateContent(c).join('\n');
@@ -60,6 +117,44 @@ describe('validateContent', () => {
     expect(errs).toContain('shop a: now/company are only supported in event choices');
     expect(errs).toContain('shop b: unknown shop flag shop:nope');
     expect(errs).toContain('shop c: invalid gamble');
+  });
+  it('투자 물건: gamble 짝, 배수, 최소 투자금, 반복 구매, 결과 문구를 잡는다', () => {
+    const g = { chance: { bull: 0.5, flat: 0.5, bear: 0.5 }, win: 2, lose: 0.5 };
+    const c: Content = {
+      ...CONTENT,
+      shop: {
+        a: { id: 'a', name: 'a', category: 'invest', price: 100, once: false, text: 'a', effects: {} },
+        b: { id: 'b', name: 'b', category: 'gear', price: 100, text: 'b', effects: {}, gamble: g },
+        d: { id: 'd', name: 'd', category: 'invest', price: 100, once: false, text: 'd', effects: {}, gamble: { ...g, win: 1 } },
+        e: { id: 'e', name: 'e', category: 'invest', price: 50, text: 'e', effects: {}, gamble: g },
+      },
+      market: { ...CONTENT.market, lines: { d: { win: ['x'], lose: [] } } },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('shop a: invest items need gamble');
+    expect(errs).toContain('shop b: only invest items can gamble');
+    expect(errs).toContain('shop d: invalid gamble');
+    expect(errs).toContain('shop e: invest price must be >= 100');
+    expect(errs).toContain('shop e: invest items must be repeatable (once: false)');
+    expect(errs).toContain('shop e: missing market lines');
+    expect(errs).toContain('shop d: market lines need win and lose');
+  });
+  it('시장: 전이표 합, 헤드라인, 단계 이름을 잡는다', () => {
+    const c: Content = {
+      ...CONTENT,
+      market: {
+        ...CONTENT.market,
+        transitions: { ...CONTENT.market.transitions, bull: { bull: 0.5, flat: 0.3, bear: 0.3 } },
+        headlines: { ...CONTENT.market.headlines, bear: [] },
+        stakeLabels: ['a', 'b'],
+        allInLose: [],
+      },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('market transitions bull: weights must be >= 0 and sum to 1');
+    expect(errs).toContain('market headlines bear: needs at least one');
+    expect(errs).toContain('market stakeLabels: needs one non-empty label per stake tier');
+    expect(errs).toContain('market allInLose: needs at least one');
   });
   it('유형: 강점·약점 스탯, 겹침, 포지션당 3개 미만을 잡는다', () => {
     const c: Content = {
@@ -77,5 +172,114 @@ describe('validateContent', () => {
     expect(errs).toContain('archetype x: needs 1-2 spikes');
     expect(errs).toContain('archetype x: needs 1-2 dumps');
     expect(errs).toContain('position sre: needs at least 3 archetypes');
+  });
+});
+
+describe('장애 포지션', () => {
+  it('모르는 포지션은 오류', () => {
+    const inc = { ...CONTENT.incidents['db-lock'], positions: ['designer' as never] };
+    const errs = validateContent({ ...CONTENT, incidents: { ...CONTENT.incidents, 'db-lock': inc } });
+    expect(errs.some((e) => e.includes('unknown position designer'))).toBe(true);
+  });
+  it('포지션마다 주 담당 장애가 3종 이상이어야 한다', () => {
+    const incidents = Object.fromEntries(Object.entries(CONTENT.incidents).filter(([, i]) => !i.positions?.includes('sre') || i.id === 'oom-kill'));
+    expect(validateContent({ ...CONTENT, incidents }).some((e) => e.includes('position sre: needs at least 3 incidents'))).toBe(true);
+  });
+});
+
+describe('반복 구매', () => {
+  it('once:false는 투자 카테고리만', () => {
+    const bad = { ...CONTENT.shop.keyboard, once: false };
+    const errs = validateContent({ ...CONTENT, shop: { ...CONTENT.shop, keyboard: bad } });
+    expect(errs.some((e) => e.includes('shop keyboard: only invest items can be repeatable'))).toBe(true);
+  });
+  describe('회사 성장 단계', () => {
+    const base = CONTENT.companies['tiny-commerce'];
+    const st = (over: Partial<GrowthStage> = {}): GrowthStage => ({ name: 's', level: base.level, baseSalary: base.baseSalary, up: 0.1, down: 0.1, text: 't', ...over });
+    const last = (over: Partial<GrowthStage> = {}) => st({ level: base.level + 5, baseSalary: base.baseSalary + 400, up: 0, down: 0, ...over });
+    const errsFor = (stages: GrowthStage[], over: Partial<Company> = {}) =>
+      validateContent({ ...CONTENT, companies: { ...CONTENT.companies, 'tiny-commerce': { ...base, ...over, stages } } }).join('\n');
+
+    it('정상 단계는 통과', () => {
+      expect(errsFor([st(), last({ ipo: true })])).toBe('');
+    });
+    it('2단계 이상', () => expect(errsFor([st({ up: 0, down: 0 })])).toContain('at least 2 stages'));
+    it('첫 단계는 회사 값과 같다', () => expect(errsFor([st({ level: 1 }), last()])).toContain('first stage must match'));
+    it('level·baseSalary는 단조 증가', () => expect(errsFor([st(), last({ baseSalary: base.baseSalary - 1 })])).toContain('must increase'));
+    it('마지막 단계는 up = down = 0', () => expect(errsFor([st(), last({ up: 0.1 })])).toContain('last stage must have up = down = 0'));
+    it('나머지 단계는 0 <= up, down, up + down < 1', () => {
+      expect(errsFor([st({ up: 0.6, down: 0.4 }), last()])).toContain('invalid up/down');
+      expect(errsFor([st({ up: -0.1 }), last()])).toContain('invalid up/down');
+    });
+    it('addCards는 있는 카드', () => expect(errsFor([st(), last({ addCards: ['nope' as CardId] })])).toContain('unknown card nope'));
+    it('ipo는 마지막 단계에만', () => expect(errsFor([st({ ipo: true }), last()])).toContain('ipo only on the last stage'));
+    it('숨은 회사, 시작 회사가 아닌 대기업 이상에는 단계 금지', () => {
+      expect(errsFor([st(), last()], { hidden: true })).toContain('stages not allowed');
+      expect(errsFor([st(), last()], { tier: 'large' })).toContain('stages not allowed');
+    });
+  });
+  describe('창업 회사', () => {
+    const fc = CONTENT.companies['founder-commerce'];
+    const close = { removeFlags: ['founder'], flags: ['founder-failed'] };
+    const errsWith = (over: Partial<Company>) =>
+      validateContent({ ...CONTENT, companies: { ...CONTENT.companies, 'founder-commerce': { ...fc, ...over } } }).join('\n');
+    const stages = (edit: (st: GrowthStage[]) => GrowthStage[]) => errsWith({ stages: edit(fc.stages!.map((x) => ({ ...x }))) });
+
+    it('지금 콘텐츠는 통과', () => expect(errsWith({})).toBe(''));
+    it('창업 회사는 숨은 회사이고 단계가 있어야 한다', () => {
+      expect(errsWith({ hidden: undefined })).toContain('company founder-commerce: founder company must be hidden with stages');
+      expect(errsWith({ stages: undefined })).toContain('founder company must be hidden with stages');
+    });
+    it('루트마다 창업 회사가 하나씩', () => {
+      const { ['founder-finance']: _, ...rest } = CONTENT.companies;
+      expect(validateContent({ ...CONTENT, companies: rest }).join('\n')).toContain('route finance: expected 1 founder company, got 0');
+    });
+    it('단계 효과에는 허용된 필드만', () => {
+      expect(stages((st) => { st[0].closeEffects = { ...close, salary: 100 }; return st; })).toContain('stage 0: closeEffects.salary not allowed');
+      expect(stages((st) => { st[1].effects = { company: 'x' }; return st; })).toContain('stage 1: effects.company not allowed');
+    });
+    it('retire는 마지막 단계 effects에서만', () => {
+      expect(stages((st) => { st[1].effects = { retire: true }; return st; })).toContain('stage 1: retire only in the last stage effects');
+      expect(stages((st) => { st[0].closeEffects = { ...close, retire: true }; return st; })).toContain('stage 0: closeEffects.retire not allowed');
+    });
+    it('마지막 단계에는 closeEffects가 없다', () => {
+      expect(stages((st) => { st[st.length - 1].closeEffects = close; return st; })).toContain('last stage cannot have closeEffects');
+    });
+    it('창업 회사 closeEffects는 founder 플래그를 지워야 한다', () => {
+      expect(stages((st) => { st[0].closeEffects = { flags: ['founder-failed'] }; return st; })).toContain('stage 0: closeEffects must remove founder flag');
+    });
+    it('founder 플래그와 창업 회사 이동은 함께', () => {
+      const ev = (effects: object) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects }] } } });
+      expect(validateContent(ev({ flags: ['founder'] })).join('\n')).toContain('event x#0: founder flag needs company founder-{route}');
+      expect(validateContent(ev({ company: 'founder-{route}' })).join('\n')).toContain('event x#0: founder company needs founder flag');
+      const routed = (effects: object) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: { route: ['commerce' as const] }, text: 'x', choices: [{ label: 'a', effects }] } } });
+      expect(validateContent(routed({ flags: ['founder'], company: 'founder-{route}' }))).toEqual([]);
+    });
+    it('{route} 회사로 옮기는 이벤트는 일반 루트에서만 (와탭 루트면 회사가 없다)', () => {
+      const ev = (when: object, extra: Record<string, unknown> = {}) => ({
+        ...CONTENT,
+        events: { ...CONTENT.events, x: { id: 'x', when, text: 'x', choices: [{ label: 'a', effects: { company: 'tiny-{route}' } }] }, ...extra },
+      });
+      expect(validateContent(ev({})).join('\n')).toContain('event x: {route} company needs when.route');
+      expect(validateContent(ev({ route: [] })).join('\n')).toContain('event x: {route} company needs when.route');
+      expect(validateContent(ev({ route: ['commerce', 'finance'] }))).toEqual([]);
+      // 실패 효과도 본다
+      const fail = { ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', chance: { base: 0.5 }, effects: {}, failEffects: { company: 'tiny-{route}' } }] } } };
+      expect(validateContent(fail).join('\n')).toContain('event x: {route} company needs when.route');
+      // next로 예약되어 나중에 뜨는 이벤트도 막는다 (프롤로그 밖)
+      const later = {
+        ...CONTENT,
+        events: {
+          ...CONTENT.events,
+          y: { id: 'y', when: {}, text: 'y', choices: [{ label: 'a', effects: { next: 'x' } }] },
+          x: { id: 'x', scheduledOnly: true, when: {}, text: 'x', choices: [{ label: 'a', effects: { company: 'tiny-{route}' } }] },
+        },
+      };
+      expect(validateContent(later).join('\n')).toContain('event x: {route} company needs when.route');
+    });
+    it('프롤로그에서 now로만 이어지는 이벤트는 루트 제한 없이 {route} 회사를 쓸 수 있다', () => {
+      expect(CONTENT.events['prologue-result'].when.route).toBeUndefined();
+      expect(validateContent(CONTENT)).toEqual([]);
+    });
   });
 });

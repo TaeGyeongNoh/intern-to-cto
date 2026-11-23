@@ -21,4 +21,7 @@ describe('일러스트 매핑', () => {
     expect(new Set(['blackfriday-1', 'migration-1', 'msa-1', 'prologue-start'].map(eventArt)).size).toBe(4);
     expect(eventArt('no-such-event')).toBeUndefined();
   });
+  it('근속 이벤트는 팀 장면을 재사용한다', () => {
+    for (const id of ['tenure-5', 'tenure-transfer', 'tenure-10']) expect(eventArt(id), id).toBe(eventArt('lead-offer'));
+  });
 });

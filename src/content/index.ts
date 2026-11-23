@@ -7,7 +7,9 @@ import { INCIDENTS } from './incidents';
 import { PROLOGUE_EVENTS } from './prologue';
 import { CARDS } from './cards';
 import { SHOP_ITEMS } from './shop';
+import { MARKET } from './market';
 import { ARCHETYPES } from './archetypes';
+import { EDUCATIONS, SERVICES } from './origins';
 
 export const CONTENT: Content = {
   cards: CARDS,
@@ -16,5 +18,8 @@ export const CONTENT: Content = {
   incidents: toRecord(INCIDENTS),
   endings: ENDINGS,
   shop: toRecord(SHOP_ITEMS),
+  market: MARKET,
   archetypes: toRecord(ARCHETYPES),
+  educations: toRecord(EDUCATIONS),
+  services: toRecord(SERVICES),
 };

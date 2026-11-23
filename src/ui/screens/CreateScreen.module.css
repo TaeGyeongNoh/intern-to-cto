@@ -39,6 +39,14 @@
 .routeText { flex: 1; min-width: 0; display: grid; gap: 6px; }
 .routeArt { flex: none; display: block; width: 96px; height: 64px; aspect-ratio: 3 / 2; border-radius: var(--radius-m); object-fit: cover; background: #fff; box-shadow: 0 0 0 1px var(--border); }
 @media (min-width: 600px) { .routeArt { width: 120px; height: 80px; } }
+.originHead { display: flex; align-items: center; gap: 8px; }
+.originHead .glyph { width: 28px; height: 28px; }
+.originMeta { font-size: 12px; font-weight: 600; color: var(--primary); }
+.small { padding: 10px 12px; }
+.smallIcon { color: var(--primary); flex: none; }
+.pick:disabled { cursor: not-allowed; opacity: .45; box-shadow: none; }
+.pick:disabled:active { transform: none; }
+.summary { margin: 10px 0 0; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .cands { display: grid; gap: 8px; margin-top: 8px; }

@@ -1,20 +1,21 @@
 import { CONTENT } from '../../content';
 import { validInputs, type Game, type Input } from '../../engine/game';
-import { POSTMORTEM_CHOICES } from '../../engine/incident';
+import { POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH } from '../../engine/incident';
 import { Modal } from '../components/Icon';
 import { EyeOff, FileText, IconText, Megaphone, Siren, UserRoundX, type IconType } from '../components/Icons';
 import { Pill } from './RouteBadge';
 import s from './Sheet.module.css';
 
-const HINTS: { icon: IconType; hint: string }[] = [
-  { icon: Megaphone, hint: '팀 문화 ↑ · 평판 ↑' },
-  { icon: EyeOff, hint: '재발할 수도…' },
-  { icon: UserRoundX, hint: '평판 ↓' },
+const hints = (resolved: boolean): { icon: IconType; hint: string }[] => [
+  { icon: Megaphone, hint: resolved ? `번아웃 +${POSTMORTEM_PUBLISH.burnout} · 평판 +${POSTMORTEM_PUBLISH.reputation} · 재발 없음` : `번아웃 +${POSTMORTEM_PUBLISH.burnout} · 재발 없음` },
+  { icon: EyeOff, hint: '재발 위험 50%' },
+  { icon: UserRoundX, hint: '평판 −4' },
 ];
 
 export function PostmortemCard({ game, incidentId, resolved, onInput }: {
   game: Game; incidentId: string; resolved: boolean; onInput: (i: Input) => void;
 }) {
+  const HINTS = hints(resolved);
   const inc = CONTENT.incidents[incidentId];
   const valid = new Set(validInputs(game, CONTENT).flatMap((v) => (v.t === 'pick' ? [v.i] : [])));
   return (

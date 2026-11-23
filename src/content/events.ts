@@ -48,6 +48,27 @@ const GENERAL: GameEvent[] = [
     ],
   },
   {
+    id: 'lead-hiring',
+    when: { track: 'mgmt', minCareerYear: 8 },
+    once: false,
+    weight: 1.5,
+    text: '팀 TO가 세 자리 났다. 면접 일정이 캘린더를 테트리스처럼 채운다.',
+    choices: [
+      { label: '면접관으로 직접 뛴다', effects: { reputation: 4, burnout: 6, story: '면접만 마흔 번 보고 세 명을 뽑았다. 그중 둘이 나중에 팀장이 됐다.' } },
+      { label: '코딩 테스트 점수 순으로 뽑는다', effects: { reputation: -1 } },
+    ],
+  },
+  {
+    id: 'lead-reorg',
+    when: { track: 'mgmt', minCareerYear: 10, minOvr: 70 },
+    weight: 2,
+    text: '조직 개편안이 돌았다. 옆 팀 팀장이 나가면서 그 팀까지 맡아 달라고 한다. 슬랙 채널이 두 배가 된다.',
+    choices: [
+      { label: '두 팀을 맡는다', effects: { reputation: 6, burnout: 10, story: '조직 개편으로 두 팀을 맡았다. 1on1이 주 열두 번이 됐다.' } },
+      { label: '지금 팀에 집중한다', effects: { burnout: -5 } },
+    ],
+  },
+  {
     id: 'keynote',
     when: { minOvr: 65 },
     once: false,
@@ -61,21 +82,22 @@ const GENERAL: GameEvent[] = [
   {
     id: 'founder-offer',
     weight: 0.5,
-    when: { minOvr: 62, minCareerYear: 8, notFlags: ['founder'] },
+    when: { route: ['commerce', 'finance', 'ai-startup'], minOvr: 62, minCareerYear: 8, maxAge: 42, notFlags: ['founder'] },
     text: '전 동료가 같이 창업하자고 한다. 아이템은 "AI 에이전트용 무언가".',
     choices: [
-      { label: '창업한다', effects: { flags: ['founder'], next: 'founder-outcome', burnout: 10, story: '회사를 나와 창업했다.' } },
+      { label: '창업한다', effects: { flags: ['founder'], company: 'founder-{route}', burnout: 10, story: '회사를 나와 창업했다.' } },
       { label: '회사에 남는다', effects: {} },
     ],
   },
   {
-    id: 'founder-outcome',
-    scheduledOnly: true,
-    when: {},
-    text: '창업 1년. 통장 잔고와 투자사 미팅 일정을 번갈아 본다.',
+    id: 'founder-runway',
+    weight: 3,
+    when: { flags: ['founder'], minYearsAtCompany: 1 },
+    text: '통장 잔고를 월 고정비로 나눠 봤다. 런웨이 7개월. 엑셀이 계산을 두 번 해 줬는데 답이 같다.',
     choices: [
-      { label: '투자 유치에 올인한다', chance: { base: 0.35, stat: 'design' }, effects: { flags: ['exit'], retire: true, story: '회사를 매각하며 엑싯했다.' }, failEffects: { flags: ['founder-failed'], removeFlags: ['founder'], reputation: -5, burnout: 10, story: '회사를 접고 다시 개발자로 돌아왔다.' } },
-      { label: '흑자를 목표로 버틴다', chance: { base: 0.25, stat: 'mental' }, effects: { flags: ['exit'], retire: true, story: '작지만 단단한 회사를 키워 넘겼다.' }, failEffects: { flags: ['founder-failed'], removeFlags: ['founder'], reputation: -5, burnout: 10, story: '버티다 회사를 접고 다시 개발자로 돌아왔다.' } },
+      { label: '대표 월급을 반납한다', effects: { salary: -600, burnout: 5, story: '대표 월급을 반납했다. 팀원들 월급날은 지켰다.' } },
+      { label: '외주를 받아 버틴다', effects: { stats: { impl: 2 }, burnout: 8 } },
+      { label: '투자사 문을 두드린다', chance: { base: 0.4, stat: 'design' }, effects: { reputation: 3 }, failEffects: { burnout: 6 } },
     ],
   },
   {
@@ -287,4 +309,39 @@ const MSA_ARC: GameEvent[] = [
   },
 ];
 
-export const EVENTS: GameEvent[] = [...GENERAL, ...AI_CHATBOT_ARC, ...BLACKFRIDAY_ARC, ...MIGRATION_ARC, ...MSA_ARC];
+/** 한 회사에 오래 남는 플레이의 숨 돌릴 구멍 (이직 말고도 번아웃을 덜 수단) */
+const TENURE: GameEvent[] = [
+  {
+    id: 'tenure-5',
+    when: { minYearsAtCompany: 5 },
+    weight: 3,
+    text: '근속 5년. 회사가 리프레시 휴가 2주와 금 한 돈을 줬다. 사내 위키의 절반은 네가 쓴 문서다.',
+    choices: [
+      { label: '휴가를 꽉 채워 쓴다', effects: { burnout: -20, story: '근속 5년 리프레시 휴가를 다녀왔다. 슬랙은 한 번만 열었다.' } },
+      { label: '휴가 대신 오래된 문서를 정리한다', effects: { burnout: -5, stats: { design: 2 }, traits: { 문화: 1 } } },
+    ],
+  },
+  {
+    id: 'tenure-transfer',
+    when: { minYearsAtCompany: 3, minBurnout: 45 },
+    once: false,
+    weight: 2,
+    text: '같은 회사, 다른 팀. 사내 이동 공고가 떴다. 옆 팀 리드가 커피를 사 주며 은근히 묻는다. "요즘 좀 지쳐 보이던데?"',
+    choices: [
+      { label: '새 팀으로 옮긴다', effects: { burnout: -25, reputation: -1, stats: { design: 1, impl: 1 }, story: '이직 대신 사내 이동을 택했다. 사원증은 그대로, 슬랙 채널은 전부 새로.' } },
+      { label: '정든 팀에 남는다', effects: {} },
+    ],
+  },
+  {
+    id: 'tenure-10',
+    when: { minYearsAtCompany: 10 },
+    weight: 3,
+    text: '근속 10년 감사패를 받았다. 신입 시절 네가 짠 코드가 아직 프로덕션에서 돈다. 주석은 "// 임시".',
+    choices: [
+      { label: '드디어 그 코드를 리팩터링한다', chance: { base: 0.5, stat: 'design' }, effects: { stats: { design: 3 }, reputation: 3, story: '10년 묵은 "임시" 코드를 지웠다. 배포 후 아무 일도 없었다. 그게 제일 무서웠다.' }, failEffects: { burnout: 6, reputation: -1 } },
+      { label: '사내 전설로 남겨 둔다', effects: { burnout: -15, traits: { 문화: 1 } } },
+    ],
+  },
+];
+
+export const EVENTS: GameEvent[] = [...GENERAL, ...TENURE, ...AI_CHATBOT_ARC, ...BLACKFRIDAY_ARC, ...MIGRATION_ARC, ...MSA_ARC];
