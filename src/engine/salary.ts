@@ -35,3 +35,23 @@ export function offerSalary(s: GameState, company: Company): number {
   const market = marketSalary(s, company);
   return Math.min(Math.round(market * OFFER_CAP), Math.max(market, Math.round(s.salary * 1.03)));
 }
+
+/** 연봉 협상 성공 시 별점 인상률에 더하는 몫 */
+export const NEGOTIATE_BONUS = 0.04;
+/** 협상으로 도달할 수 있는 상한 (시장가 대비, 연말 1.15와 이직 1.3 사이) */
+export const NEGOTIATE_CAP = 1.2;
+/** 협상 실패 시 인상률 (별점 2 수준) */
+export const NEGOTIATE_FAIL_RAISE = RAISE_BY_RATING[2];
+
+/** 연봉 협상 성공 확률. 별점이 높고 평판이 높을수록 잘 된다 */
+export function negotiateChance(s: GameState, rating: number): number {
+  return clamp(0.35 + (rating - 4) * 0.15 + s.reputation / 200, 0.1, 0.85);
+}
+
+/** 협상 결과 연봉. prev: 평가 전 연봉, base: 자동 인상 제시안 */
+export function negotiatedSalary(s: GameState, company: Company, rating: number, prev: number, base: number): { win: number; lose: number } {
+  const raised = Math.round(prev * (1 + (RAISE_BY_RATING[rating] ?? 0) + NEGOTIATE_BONUS));
+  const win = Math.max(base, Math.min(raised, Math.round(marketSalary(s, company) * NEGOTIATE_CAP)));
+  const lose = Math.min(base, Math.round(prev * (1 + NEGOTIATE_FAIL_RAISE)));
+  return { win, lose };
+}

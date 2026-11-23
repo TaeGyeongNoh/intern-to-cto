@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { apply, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
+import { apply, NEGOTIATE_CHOICES, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
+import { STOCK_GRANT_MULT } from './company';
+import { marketSalary, NEGOTIATE_BONUS, NEGOTIATE_CAP, negotiateChance, RAISE_BY_RATING } from './salary';
 import { createRng } from './rng';
 import { FAST_MTTR } from './incident';
 import { RETIRE_AGE } from './season';
@@ -354,5 +356,102 @@ describe('회사 성장 · 폐업', () => {
       const moved = apply(h, { t: 'pick', i: 0 }, c);
       expect(moved.state.companyId).not.toBe('tiny-commerce');
     }
+  });
+});
+
+describe('연봉 협상', () => {
+  const evX: GameEvent = { id: 'x', when: {}, scheduledOnly: true, text: 'x', choices: [{ label: 'x', effects: {} }] };
+  const cx: Content = { ...CONTENT, events: { ...CONTENT.events, x: evX } };
+  const atReview = (over: Partial<Game['state']> = {}): Game => ({
+    setup, seed: 1, rngState: 1,
+    state: makeState({ yearsInCareer: 2, age: 30, ...over }),
+    queue: [{ kind: 'event', eventId: 'x' }, { kind: 'review' }], log: [], feed: [],
+  });
+
+  it('별점 4 이상이면 상점보다 먼저 협상이 열린다', () => {
+    const g = apply(atReview({ yearScore: 50 }), { t: 'pick', i: 0 }, cx);
+    const p = pending(g);
+    expect(p.kind).toBe('negotiate');
+    if (p.kind !== 'negotiate') return;
+    expect(p.rating).toBe(5);
+    expect(p.prev).toBe(makeState().salary);
+    expect(p.base).toBe(g.state.salary);
+    expect(validInputs(g, cx)).toEqual([{ t: 'pick', i: 0 }, { t: 'pick', i: 1 }]);
+  });
+  it('별점 3 이하, founder, 은퇴면 열리지 않는다', () => {
+    const kinds = (g: Game) => g.queue.map((p) => p.kind);
+    expect(kinds(apply(atReview({ yearScore: -50 }), { t: 'pick', i: 0 }, cx))).not.toContain('negotiate');
+    expect(kinds(apply(atReview({ yearScore: 50, flags: ['founder'] }), { t: 'pick', i: 0 }, cx))).not.toContain('negotiate');
+    expect(kinds(apply(atReview({ yearScore: 50, age: RETIRE_AGE }), { t: 'pick', i: 0 }, cx))).not.toContain('negotiate');
+  });
+
+  const negotiating = (over: Partial<Game['state']> = {}, prev = 5000, base = 5250, rating = 4): Game => {
+    const state = makeState({ salary: base, maxSalary: base, reputation: 30, ...over });
+    const row = { year: state.year, age: state.age, companyId: state.companyId, title: state.title, rating, ovr: 50, salary: base };
+    return {
+      setup, seed: 1, rngState: 1,
+      state: { ...state, record: { ...state.record, history: [row] } },
+      queue: [{ kind: 'negotiate', rating, base, prev, prevMax: prev }, { kind: 'year' }], log: [], feed: [],
+    };
+  };
+  it('사인하면 제시안 그대로', () => {
+    const g = apply(negotiating(), { t: 'pick', i: 0 }, CONTENT);
+    expect(g.state.salary).toBe(5250);
+    expect(g.outcome?.title).toBe(NEGOTIATE_CHOICES[0]);
+    expect(pending(g).kind).not.toBe('negotiate');
+  });
+  it('더 달라고 하면: 성공은 prev × (1 + 인상률 + 보너스, 상한), 실패는 prev × 1.01. 히스토리·최고연봉도 고친다', () => {
+    const seen = new Set<boolean>();
+    for (let seed = 1; seed < 80; seed++) {
+      const g = apply({ ...negotiating(), rngState: seed }, { t: 'pick', i: 1 }, CONTENT);
+      const ok = g.outcome!.ok!;
+      seen.add(ok);
+      const market = marketSalary(g.state, CONTENT.companies[g.state.companyId]);
+      const win = Math.min(Math.round(5000 * (1 + RAISE_BY_RATING[4] + NEGOTIATE_BONUS)), Math.round(market * NEGOTIATE_CAP));
+      expect(g.state.salary).toBe(ok ? Math.max(5250, win) : 5050);
+      expect(g.state.record.history.at(-1)!.salary).toBe(g.state.salary);
+      expect(g.state.maxSalary).toBe(Math.max(5000, g.state.salary));
+      expect(g.outcome!.deltas.some((d) => d.label === '연봉')).toBe(g.state.salary !== 5250);
+    }
+    expect(seen).toEqual(new Set([true, false]));
+  });
+  it('실패해도 제시안보다 많이 받지는 않는다 (상한에 걸려 동결된 해)', () => {
+    const g = apply({ ...negotiating({}, 5000, 5000), rngState: 3 }, { t: 'pick', i: 1 }, CONTENT);
+    if (!g.outcome!.ok) expect(g.state.salary).toBe(5000);
+  });
+  it('협상 확률은 별점과 평판에 따라 0.1~0.85', () => {
+    expect(negotiateChance(makeState({ reputation: 30 }), 4)).toBeCloseTo(0.5);
+    expect(negotiateChance(makeState({ reputation: 100 }), 5)).toBe(0.85);
+    expect(negotiateChance(makeState({ reputation: 0 }), 4)).toBeCloseTo(0.35);
+  });
+  it('스톡옵션은 상장할 수 있는 단계 회사에서만, 연봉 동결 + 포기한 인상분 × 배수', () => {
+    const c: Content = {
+      ...CONTENT,
+      companies: {
+        ...CONTENT.companies,
+        dangeun: {
+          ...CONTENT.companies.dangeun,
+          stages: [
+            { name: '시드', level: 44, baseSalary: 3800, up: 0.1, down: 0.1, text: '' },
+            { name: '상장', level: 50, baseSalary: 4400, up: 0, down: 0, text: '', ipo: true },
+          ],
+        },
+      },
+    };
+    expect(validInputs(negotiating(), CONTENT)).toHaveLength(2);
+    expect(validInputs(negotiating(), c)).toHaveLength(3);
+    expect(validInputs(negotiating({ companyStage: { dangeun: 1 } }), c)).toHaveLength(2);
+    expect(validInputs(negotiating({}, 5000, 5000), c)).toHaveLength(2);
+    const g = apply(negotiating({ stock: { companyId: 'dangeun', value: 100 } }), { t: 'pick', i: 2 }, c);
+    expect(g.state.salary).toBe(5000);
+    expect(g.state.maxSalary).toBe(5000);
+    expect(g.state.record.history.at(-1)!.salary).toBe(5000);
+    expect(g.state.stock).toEqual({ companyId: 'dangeun', value: 100 + 250 * STOCK_GRANT_MULT });
+    expect(g.outcome!.deltas).toContainEqual({ label: '스톡옵션', value: `+${(250 * STOCK_GRANT_MULT).toLocaleString('ko-KR')}만원`, good: true });
+  });
+  it('같은 시드·로그면 같은 협상 결과 (입력 상태 불변)', () => {
+    const g = negotiating();
+    const frozen = Object.freeze({ ...g, state: Object.freeze(g.state) });
+    expect(apply(frozen, { t: 'pick', i: 1 }, CONTENT)).toEqual(apply(g, { t: 'pick', i: 1 }, CONTENT));
   });
 });

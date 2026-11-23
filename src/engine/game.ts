@@ -1,11 +1,12 @@
 import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer } from './career';
-import { growCompany } from './company';
+import { effectiveCompany, growCompany, STOCK_GRANT_MULT, stockEligible } from './company';
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
 import { actionChance, FAST_MTTR, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
 import { diffState, type Outcome } from './outcome';
 import { createRng } from './rng';
+import { negotiateChance, negotiatedSalary } from './salary';
 import { review, runYear } from './season';
 import { buyItem, pickShopItems } from './shop';
 import { createInitialState, type Setup } from './state';
@@ -23,6 +24,8 @@ export type Pending =
   | { kind: 'incident-action'; incidentId: string; clues: number }
   | { kind: 'postmortem'; incidentId: string; resolved: boolean }
   | { kind: 'review' }
+  /** 별점 4 이상인 해의 연봉 협상. base: 자동 인상 제시안(이미 반영됨), prev·prevMax: 평가 전 연봉·최고연봉 */
+  | { kind: 'negotiate'; rating: number; base: number; prev: number; prevMax: number }
   /** 연말 상점: pick i는 items[i]를 사고, pick items.length는 건너뛴다 */
   | { kind: 'shop'; items: string[] }
   /** forced: 지금 회사가 문을 닫아 남을 수 없다 ("남는다" 입력이 없다) */
@@ -45,6 +48,11 @@ export type Game = {
 };
 
 const pick = (i: number): Input => ({ t: 'pick', i });
+
+/** 연봉 협상 선택지 (입력 인덱스 순서) */
+export const NEGOTIATE_CHOICES = ['제시안에 사인한다', '조금만 더 올려 달라고 한다', '인상 대신 스톡옵션을 받는다'] as const;
+/** 협상이 열리는 최소 별점 */
+export const NEGOTIATE_MIN_RATING = 4;
 
 /** 첫 해 전에 거치는 취준·인턴 프롤로그의 시작 이벤트 (콘텐츠에 있을 때만) */
 export const PROLOGUE_START = 'prologue-start';
@@ -85,6 +93,8 @@ export function validInputs(g: Game, c: Content): Input[] {
       return c.incidents[p.incidentId].actions.map((_, i) => pick(i));
     case 'postmortem':
       return POSTMORTEM_CHOICES.map((_, i) => pick(i));
+    case 'negotiate':
+      return [pick(0), pick(1), ...(p.base > p.prev && stockEligible(s, c) ? [pick(2)] : [])];
     case 'shop':
       return Array.from({ length: p.items.length + 1 }, (_, i) => pick(i));
     case 'offers':
@@ -207,6 +217,33 @@ export function apply(g: Game, input: Input, c: Content): Game {
       feed.push(POSTMORTEM_CHOICES[i]);
       break;
     }
+    case 'negotiate': {
+      const i = indexOf(input);
+      let salary = p.base;
+      let ok: boolean | undefined;
+      let detail: string;
+      if (i === 0) {
+        detail = '서명 한 번에 올해 협상이 끝났다. 볼펜은 돌려줬다.';
+      } else if (i === 1) {
+        ok = rng.chance(negotiateChance(s, p.rating));
+        const r = negotiatedSalary(s, effectiveCompany(s.companyId, s, c), p.rating, p.prev, p.base);
+        salary = ok ? r.win : r.lose;
+        detail = ok ? '인사팀이 한숨을 쉬더니 숫자를 고쳐 적었다.' : '"예산이 정해져 있어서요." 분위기가 싸해지고, 인상률이 오히려 깎였다.';
+      } else {
+        salary = p.prev;
+        const grant = (p.base - p.prev) * STOCK_GRANT_MULT;
+        const held = s.stock?.companyId === s.companyId ? s.stock.value : 0;
+        s = { ...s, stock: { companyId: s.companyId, value: held + grant } };
+        detail = '숫자 대신 종이 한 장을 받았다. 상장하면 이 종이가 돈이 된다고 한다. 아마도.';
+      }
+      if (salary !== s.salary) {
+        const history = s.record.history.map((row, k, all) => (k === all.length - 1 ? { ...row, salary } : row));
+        s = { ...s, salary, maxSalary: Math.max(p.prevMax, salary), record: { ...s.record, history } };
+      }
+      result = ok === undefined ? { title: NEGOTIATE_CHOICES[i], detail } : { title: NEGOTIATE_CHOICES[i], ok, detail };
+      feed.push(ok === undefined ? `연봉 협상 · ${NEGOTIATE_CHOICES[i]}` : `연봉 협상 · ${NEGOTIATE_CHOICES[i]} — ${ok ? '성공' : '실패'}`);
+      break;
+    }
     case 'shop': {
       const i = indexOf(input);
       if (i < p.items.length) {
@@ -271,6 +308,8 @@ function drain(g: Game, c: Content): Game {
         const grown = growCompany(state, rng, c);
         state = grown.state;
         feed.push(...grown.feed);
+        if (r.rating >= NEGOTIATE_MIN_RATING && !grown.closed && !state.flags.includes('founder'))
+          q.push({ kind: 'negotiate', rating: r.rating, base: state.salary, prev: game.state.salary, prevMax: game.state.maxSalary });
         const items = pickShopItems(state, rng, c);
         if (items.length > 0) q.push({ kind: 'shop', items });
         const offers = generateOffers(state, rng, c, { forced: grown.closed });

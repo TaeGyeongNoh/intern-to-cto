@@ -17,6 +17,7 @@ export function diffState(a: GameState, b: GameState, c: Content): Delta[] {
   num('번아웃', b.burnout - a.burnout, true);
   num('연봉', b.salary - a.salary, false, '만원');
   num('자산', b.assets - a.assets, false, '만원');
+  num('스톡옵션', (b.stock?.value ?? 0) - (a.stock?.value ?? 0), false, '만원');
   for (const card of b.deck) if (!a.deck.includes(card)) out.push({ label: c.cards[card].name, value: '획득', good: true });
   if (a.companyId !== b.companyId) out.push({ label: '회사', value: c.companies[b.companyId].name, good: true });
   return out;
