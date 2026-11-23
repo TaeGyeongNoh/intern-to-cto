@@ -17,8 +17,11 @@ export const serviceAllowed = (sv: Service, educationId: string): boolean => !sv
 
 /** 기본값을 채우고 존재·조합을 검사한다. 잘못되면 throw (공유 링크면 새 게임으로 넘어간다) */
 export function resolveOrigin(setup: Setup, c: Content): Origin {
-  const education = c.educations[setup.education ?? DEFAULT_EDUCATION];
-  const service = c.services[setup.service ?? DEFAULT_SERVICE];
+  const eid = setup.education ?? DEFAULT_EDUCATION;
+  const sid = setup.service ?? DEFAULT_SERVICE;
+  // 공유 링크에서 온 값이라 'toString' 같은 프로토타입 키를 걸러낸다
+  const education = Object.hasOwn(c.educations, eid) ? c.educations[eid] : undefined;
+  const service = Object.hasOwn(c.services, sid) ? c.services[sid] : undefined;
   if (!education) throw new Error(`unknown education ${setup.education}`);
   if (!service) throw new Error(`unknown service ${setup.service}`);
   if (!serviceAllowed(service, education.id)) throw new Error(`service ${service.id} not allowed for ${education.id}`);
@@ -28,7 +31,7 @@ export function resolveOrigin(setup: Setup, c: Content): Origin {
 /** 엔딩·공유 카드에 보일 학력 이름. 기본 학력이거나 모르는 id면 없다 (병역은 보이지 않는다) */
 export function educationLabel(setup: Setup, c: Content): string | undefined {
   const id = setup.education;
-  return id && id !== DEFAULT_EDUCATION ? c.educations[id]?.name : undefined;
+  return id && id !== DEFAULT_EDUCATION && Object.hasOwn(c.educations, id) ? c.educations[id].name : undefined;
 }
 
 export const startAge = (o: Origin): number => o.education.age + o.service.years;

@@ -23,6 +23,10 @@ describe('resolveOrigin', () => {
     expect(() => o('grad', 'industrial')).toThrow();
     expect(o('grad', 'research').service.id).toBe('research');
   });
+  it('프로토타입 키(공유 링크 조작)도 모르는 id로 throw', () => {
+    expect(() => o('toString')).toThrow();
+    expect(() => o(undefined, 'constructor')).toThrow();
+  });
   it('serviceAllowed는 학력 제한을 따른다', () => {
     expect(serviceAllowed(CONTENT.services.research, 'grad')).toBe(true);
     expect(serviceAllowed(CONTENT.services.research, 'highschool')).toBe(false);
