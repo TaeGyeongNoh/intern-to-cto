@@ -34,7 +34,7 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
   const stage = companyStageName(st, st.companyId, CONTENT);
   const archetype = CONTENT.archetypes[st.archetypeId];
   const o = ovr(st.stats, st.position);
-  const role = roleFor(o, co.level);
+  const role = roleFor(o, co.level, st.yearsInCareer);
   const hist = st.record.history;
   const ovrDelta = hist.length >= 2 ? hist[hist.length - 1].ovr - hist[hist.length - 2].ovr : 0;
   const isYear = pending(game).kind === 'year';

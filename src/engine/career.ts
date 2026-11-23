@@ -31,7 +31,7 @@ export function scoutEligible(s: GameState): boolean {
 function makeOffer(co: Company, s: GameState, o: number): Offer {
   return {
     companyId: co.id,
-    role: roleFor(o, co.level),
+    role: roleFor(o, co.level, s.yearsInCareer),
     salary: offerSalary(s, co),
   };
 }

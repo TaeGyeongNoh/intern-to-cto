@@ -39,7 +39,7 @@ export function ageFactor(age: number, type: GrowthType): number {
 export function runYear(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[] } {
   const company = effectiveCompany(s.companyId, s, c);
   const before = ovr(s.stats, s.position);
-  const role = roleFor(before, company.level);
+  const role = roleFor(before, company.level, s.yearsInCareer);
   const stats = { ...s.stats };
 
   const potentialFactor = before >= s.potential ? 0.1 : 1;

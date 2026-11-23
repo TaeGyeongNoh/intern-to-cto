@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { computeTitle, nextTitle, nextTitleProgress, roleFor } from './roles';
+import { computeTitle, nextTitle, nextTitleProgress, OWNER_MIN_YEARS, ROLE_LABELS, roleFor } from './roles';
 import { makeState } from './testing';
 
 describe('roleFor', () => {
   it('회사 레벨 대비 OVR로 역할이 정해진다', () => {
-    expect(roleFor(50, 44)).toBe('owner');
-    expect(roleFor(45, 44)).toBe('main');
-    expect(roleFor(39, 44)).toBe('main');
-    expect(roleFor(38, 44)).toBe('support');
+    expect(roleFor(50, 44, 5)).toBe('owner');
+    expect(roleFor(45, 44, 5)).toBe('main');
+    expect(roleFor(39, 44, 5)).toBe('main');
+    expect(roleFor(38, 44, 5)).toBe('support');
+  });
+  it('연차가 OWNER_MIN_YEARS 미만이면 실력이 넘쳐도 핵심 담당은 못 맡는다', () => {
+    expect(roleFor(60, 39, 0)).toBe('main');
+    expect(roleFor(60, 39, OWNER_MIN_YEARS - 1)).toBe('main');
+    expect(roleFor(60, 39, OWNER_MIN_YEARS)).toBe('owner');
+    expect(ROLE_LABELS.owner).not.toBe('오너');
   });
 });
 
