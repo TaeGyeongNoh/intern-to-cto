@@ -1,7 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { apply, newGame, pending, validInputs } from '../engine/game';
+import { apply, careerInputs, newGame, pending, validInputs } from '../engine/game';
 import { createRng } from '../engine/rng';
 import { GameView } from './GameView';
 
@@ -13,7 +13,8 @@ describe('GameView 스모크', () => {
       for (let guard = 0; ; guard++) {
         expect(() => renderToString(<GameView game={g} log={[]} onInput={() => {}} onRestart={() => {}} />)).not.toThrow();
         if (pending(g).kind === 'ended' || guard > 3000) break;
-        g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+        // 모든 단계를 거치도록 스스로 은퇴하지 않는다
+        g = apply(g, r.pick(careerInputs(g, CONTENT)), CONTENT);
       }
       expect(pending(g).kind).toBe('ended');
     }

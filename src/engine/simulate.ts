@@ -1,4 +1,4 @@
-import { apply, newGame, pending, validInputs, type Game, type Input } from './game';
+import { apply, careerInputs, newGame, pending, type Game, type Input } from './game';
 import { IPO_MULT } from './company';
 import { actionChance } from './incident';
 import { serviceAllowed } from './origin';
@@ -143,7 +143,8 @@ export const TOP_ENDINGS = ['cto', 'vp', 'principal'];
 
 function chooseInput(g: Game, c: Content, player: Rng, policy: SimPolicy): Input {
   const p = pending(g);
-  const valid = validInputs(g, c);
+  // 시뮬레이터 정책은 스스로 은퇴하지 않는다 (밸런스 지표는 끝까지 일한 커리어 기준)
+  const valid = careerInputs(g, c);
   if (p.kind === 'shop') {
     const choices = shopChoices(p.items, g.state, c);
     if (policy === 'greedy') {

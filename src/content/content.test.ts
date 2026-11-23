@@ -15,7 +15,7 @@ describe('CONTENT', () => {
       for (const e of evs) expect(e.id.startsWith(`${arc}-`), e.id).toBe(true);
     }
   });
-  it('엔딩 15종', () => {
-    expect(CONTENT.endings).toHaveLength(15);
+  it('엔딩 17종', () => {
+    expect(CONTENT.endings).toHaveLength(17);
   });
 });
