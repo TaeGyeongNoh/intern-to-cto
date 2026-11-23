@@ -91,3 +91,11 @@ describe('장애 포지션', () => {
     expect(validateContent({ ...CONTENT, incidents }).some((e) => e.includes('position sre: needs at least 3 incidents'))).toBe(true);
   });
 });
+
+describe('반복 구매', () => {
+  it('once:false는 투자 카테고리만', () => {
+    const bad = { ...CONTENT.shop.keyboard, once: false };
+    const errs = validateContent({ ...CONTENT, shop: { ...CONTENT.shop, keyboard: bad } });
+    expect(errs.some((e) => e.includes('shop keyboard: only invest items can be repeatable'))).toBe(true);
+  });
+});

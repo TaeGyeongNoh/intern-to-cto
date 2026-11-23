@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { createRng } from './rng';
-import { buyItem, pickShopItems, SAVINGS_RATE, SHOP_SLOTS, shopFlag } from './shop';
+import { buyItem, ownedItems, pickShopItems, SAVINGS_RATE, SHOP_SLOTS, shopFlag } from './shop';
 import { makeState } from './testing';
 import type { Content, ShopItem } from './types';
 
@@ -60,5 +60,25 @@ describe('buyItem', () => {
 describe('저축', () => {
   it('연봉의 25%', () => {
     expect(SAVINGS_RATE).toBe(0.25);
+  });
+});
+
+describe('ownedItems', () => {
+  it('투자를 빼고, 중복 없이, 산 순서대로', () => {
+    const c = shop(item('a', 10), item('b', 10), item('coin', 10, { category: 'invest', once: false }));
+    expect(ownedItems(makeState({ purchases: ['b', 'coin', 'a', 'coin', 'b'] }), c).map((x) => x.id)).toEqual(['b', 'a']);
+  });
+  it('콘텐츠에서 사라진 id는 건너뛴다', () => {
+    expect(ownedItems(makeState({ purchases: ['ghost'] }), shop(item('a', 10)))).toEqual([]);
+  });
+});
+
+describe('buyItem 도박 결과', () => {
+  it('투자면 성공 여부와 회수액을 돌려준다', () => {
+    const coin = item('coin', 1000, { category: 'invest', once: false, gamble: { chance: 0.5, win: 3, lose: 0.2 } });
+    const r = buyItem(makeState({ assets: 1000 }), coin, createRng(1));
+    expect(r.gamble).toBeDefined();
+    expect(r.gamble!.back).toBe(r.gamble!.ok ? 3000 : 200);
+    expect(buyItem(makeState({ assets: 100 }), item('a', 10), createRng(1)).gamble).toBeUndefined();
   });
 });

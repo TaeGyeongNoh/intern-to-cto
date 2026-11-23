@@ -13,13 +13,13 @@ export const SHOP_ITEMS: ShopItem[] = [
 
   // 자기계발
   { id: 'cloud-cert', name: '클라우드 자격증', category: 'growth', price: 150, text: '시험 범위의 절반은 처음 보는 서비스 이름이다.', effects: { stats: { infra: 3 } } },
-  { id: 'conference', name: '해외 컨퍼런스', category: 'growth', price: 400, once: false, when: { minCareerYear: 2 }, text: '세션보다 복도에서 더 많이 배운다. 굿즈는 덤.', effects: { reputation: 1, stats: { ai: 1, design: 1 } } },
+  { id: 'conference', name: '해외 컨퍼런스', category: 'growth', price: 400, when: { minCareerYear: 2 }, text: '세션보다 복도에서 더 많이 배운다. 굿즈는 덤.', effects: { reputation: 1, stats: { ai: 1, design: 1 } } },
   { id: 'ai-course', name: 'AI 에이전트 실전 과정', category: 'growth', price: 600, when: { minCalendarYear: 2027 }, text: '주말 8주. 수료 프로젝트는 "회의록 써 주는 에이전트".', effects: { stats: { ai: 4 }, burnout: 3 } },
   { id: 'grad-school', name: '야간 대학원', category: 'growth', price: 3000, when: { minCareerYear: 3 }, text: '퇴근하고 논문, 주말엔 과제. 학위는 남고 저녁은 사라진다.', effects: { stats: { design: 4, ai: 2 }, reputation: 3, burnout: 12, story: '야간 대학원을 마쳤다. 졸업 논문 주제는 "장애 대응 시간 단축에 관한 연구".' } },
 
   // 휴식
   { id: 'cat', name: '반려묘 입양', category: 'rest', price: 300, text: '온콜 알람보다 먼저 깨우는 존재가 생겼다. 키보드 위 지분도 생겼다.', effects: { burnout: -6, stats: { mental: 1 }, story: '고양이를 입양했다. 커밋 메시지에 가끔 "ㅁㄴㅇㄹ"가 섞인다.' } },
-  { id: 'sabbatical', name: '안식 휴가 한 달', category: 'rest', price: 1500, once: false, when: { minBurnout: 50 }, text: '노트북은 두고 간다. 정말이다. 아마도.', effects: { burnout: -20, reputation: -2 } },
+  { id: 'sabbatical', name: '안식 휴가 한 달', category: 'rest', price: 1500, when: { minBurnout: 50 }, text: '노트북은 두고 간다. 정말이다. 아마도.', effects: { burnout: -20, reputation: -2 } },
   { id: 'jeju', name: '제주 한 달 살기', category: 'rest', price: 2000, when: { minBurnout: 40 }, text: '귤밭 옆 작업실. 슬랙 알림은 끄고, 파도 소리는 켠다.', effects: { burnout: -25, stats: { mental: 1 }, story: '제주에서 한 달을 살았다. 퇴사는 하지 않았다.' } },
 
   // 인생

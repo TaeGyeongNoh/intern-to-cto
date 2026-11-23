@@ -69,6 +69,7 @@ export function validateContent(c: Content): string[] {
     if (key !== item.id) errs.push(`shop key ${key} != id ${item.id}`);
     if (!(item.price > 0)) errs.push(`${where}: price must be positive`);
     checkEffects(where, item.effects);
+    if (item.once === false && item.category !== 'invest') errs.push(`${where}: only invest items can be repeatable`);
     if (item.effects.next || item.effects.retire) errs.push(`${where}: next/retire are not supported in shop items`);
     for (const f of item.when?.flags ?? []) if (f.startsWith('shop:') && !shopFlags.has(f)) errs.push(`${where}: unknown shop flag ${f}`);
     const g = item.gamble;

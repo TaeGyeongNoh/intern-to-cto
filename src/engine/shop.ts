@@ -30,7 +30,17 @@ export function pickShopItems(s: GameState, rng: Rng, c: Content): string[] {
 
 const man = (v: number) => `${v.toLocaleString('ko-KR')}만원`;
 
-export function buyItem(s: GameState, item: ShopItem, rng: Rng): { state: GameState; feed: string[] } {
+/** 산 물건 목록 (투자 제외, 중복 없이 산 순서대로) */
+export function ownedItems(s: GameState, c: Content): ShopItem[] {
+  const out: ShopItem[] = [];
+  for (const id of s.purchases) {
+    const item = c.shop[id];
+    if (item && item.category !== 'invest' && !out.includes(item)) out.push(item);
+  }
+  return out;
+}
+
+export function buyItem(s: GameState, item: ShopItem, rng: Rng): { state: GameState; feed: string[]; gamble?: { ok: boolean; back: number } } {
   let next: GameState = {
     ...s,
     assets: s.assets - item.price,
@@ -39,11 +49,13 @@ export function buyItem(s: GameState, item: ShopItem, rng: Rng): { state: GameSt
   };
   next = applyEffects(next, item.effects);
   const feed = [`구입 · ${item.name} (−${man(item.price)})`];
+  let gamble: { ok: boolean; back: number } | undefined;
   if (item.gamble) {
     const ok = rng.chance(item.gamble.chance);
     const back = Math.round(item.price * (ok ? item.gamble.win : item.gamble.lose));
     next = { ...next, assets: next.assets + back };
     feed.push(`${item.name} — ${ok ? '성공' : '실패'} (${man(back)} 회수)`);
+    gamble = { ok, back };
   }
-  return { state: next, feed };
+  return { state: next, feed, gamble };
 }
