@@ -50,3 +50,6 @@ export function pickIncidents(s: GameState, rng: Rng, c: Content): string[] {
   }
   return chosen;
 }
+
+/** 포스트모템 공개: 문서 작업으로 지치지만, 복구했을 때만 평판이 오른다 */
+export const POSTMORTEM_PUBLISH = { burnout: 3, reputation: 2 } as const;

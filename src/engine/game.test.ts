@@ -265,3 +265,26 @@ describe('상점', () => {
     expect(pending(skipped).kind).not.toBe('shop');
   });
 });
+
+describe('포스트모템 득실', () => {
+  const pm = (resolved: boolean): Game => ({
+    setup, seed: 1, rngState: 1,
+    state: makeState({ reputation: 40, burnout: 10 }),
+    queue: [{ kind: 'postmortem', incidentId: 'payment-latency', resolved }, { kind: 'year' }],
+    log: [], feed: [],
+  });
+  it('공개: 번아웃 +3, 복구했으면 평판 +2', () => {
+    const g = apply(pm(true), { t: 'pick', i: 0 }, CONTENT);
+    expect(g.state.reputation).toBe(42);
+    expect(g.state.burnout).toBe(13);
+    expect(g.state.traits['문화']).toBe(1);
+  });
+  it('공개: 복구 실패면 평판은 그대로, 번아웃 +3', () => {
+    const g = apply(pm(false), { t: 'pick', i: 0 }, CONTENT);
+    expect(g.state.reputation).toBe(40);
+    expect(g.state.burnout).toBe(13);
+  });
+  it('남 탓은 평판 -4', () => {
+    expect(apply(pm(true), { t: 'pick', i: 2 }, CONTENT).state.reputation).toBe(36);
+  });
+});

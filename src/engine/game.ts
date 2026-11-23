@@ -2,7 +2,7 @@ import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
-import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, shuffledOrder } from './incident';
+import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
 import { createRng } from './rng';
 import { review, runYear } from './season';
 import { buyItem, pickShopItems } from './shop';
@@ -182,7 +182,13 @@ export function apply(g: Game, input: Input, c: Content): Game {
     }
     case 'postmortem': {
       const i = indexOf(input);
-      if (i === 0) s = applyEffects(s, { reputation: 2, traits: { 문화: 1 } });
+      if (i === 0) {
+        s = applyEffects(s, {
+          burnout: POSTMORTEM_PUBLISH.burnout,
+          reputation: p.resolved ? POSTMORTEM_PUBLISH.reputation : 0,
+          traits: { 문화: 1 },
+        });
+      }
       else if (i === 1) {
         if (rng.chance(0.5)) s = { ...s, recur: [...s.recur, p.incidentId] };
       } else s = applyEffects(s, { reputation: -4, traits: { 정치력: 1 } });
