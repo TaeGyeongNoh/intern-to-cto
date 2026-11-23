@@ -29,16 +29,16 @@ describe('computeTitle', () => {
   it('매니지먼트 트랙', () => {
     const mgmt = (over: Parameters<typeof makeState>[0]) => makeState({ track: 'mgmt', yearsInCareer: 15, ...over });
     expect(computeTitle(mgmt({}), 60)).toBe('팀장');
-    expect(computeTitle(mgmt({ reputation: 70 }), 80)).toBe('VP of Engineering');
-    expect(computeTitle(mgmt({ reputation: 84 }), 90, 'bigtech')).toBe('VP of Engineering');
-    expect(computeTitle(mgmt({ reputation: 85 }), 85, 'large')).toBe('CTO');
-    expect(computeTitle(mgmt({ reputation: 85 }), 85, 'bigtech')).toBe('CTO');
+    expect(computeTitle(mgmt({ reputation: 65 }), 76)).toBe('VP of Engineering');
+    expect(computeTitle(mgmt({ reputation: 79 }), 90, 'bigtech')).toBe('VP of Engineering');
+    expect(computeTitle(mgmt({ reputation: 80 }), 83, 'large')).toBe('CTO');
+    expect(computeTitle(mgmt({ reputation: 80 }), 83, 'bigtech')).toBe('CTO');
   });
-  it('VP는 OVR 80·평판 70·12년, CTO는 OVR 85·평판 85·15년에 대기업·빅테크여야 한다', () => {
+  it('VP는 OVR 76·평판 65·12년, CTO는 OVR 83·평판 80·15년에 대기업·빅테크여야 한다', () => {
     const mgmt = (over: Parameters<typeof makeState>[0]) => makeState({ track: 'mgmt', yearsInCareer: 15, ...over });
-    expect(computeTitle(mgmt({ reputation: 69 }), 90, 'bigtech')).toBe('팀장');
-    expect(computeTitle(mgmt({ reputation: 90 }), 79, 'bigtech')).toBe('팀장');
-    expect(computeTitle(mgmt({ reputation: 90 }), 84, 'bigtech')).toBe('VP of Engineering');
+    expect(computeTitle(mgmt({ reputation: 64 }), 90, 'bigtech')).toBe('팀장');
+    expect(computeTitle(mgmt({ reputation: 90 }), 75, 'bigtech')).toBe('팀장');
+    expect(computeTitle(mgmt({ reputation: 90 }), 82, 'bigtech')).toBe('VP of Engineering');
     expect(computeTitle(mgmt({ reputation: 90 }), 90, 'startup')).toBe('VP of Engineering');
     expect(computeTitle(mgmt({ reputation: 90 }), 90, 'mid')).toBe('VP of Engineering');
     expect(computeTitle(mgmt({ reputation: 90 }), 90)).toBe('VP of Engineering');
@@ -79,8 +79,8 @@ describe('nextTitleProgress', () => {
   it('중견 회사 VP의 CTO 조건에 회사 규모 미충족', () => {
     const p = nextTitleProgress(makeState({ title: 'VP of Engineering', track: 'mgmt', yearsInCareer: 16, reputation: 90, stats: statsAt(90) }), 'mid');
     expect(p?.title).toBe('CTO');
-    expect(p?.reqs).toContainEqual({ label: 'OVR', current: '90', need: '85', ok: true });
-    expect(p?.reqs).toContainEqual({ label: '평판', current: '90', need: '85', ok: true });
+    expect(p?.reqs).toContainEqual({ label: 'OVR', current: '90', need: '83', ok: true });
+    expect(p?.reqs).toContainEqual({ label: '평판', current: '90', need: '80', ok: true });
     expect(p?.reqs).toContainEqual({ label: '회사 규모', current: '중견', need: '대기업·빅테크', ok: false });
   });
   it('트랙이 막 바뀌어 직급이 다른 트랙이면 표시하지 않는다', () => {

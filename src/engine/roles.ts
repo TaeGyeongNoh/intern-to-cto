@@ -24,9 +24,13 @@ export const IC_RULES: readonly TitleRule[] = [
   { title: '미드레벨', minOvr: 55, minCareerYear: 3 },
   { title: '주니어', minOvr: 0 },
 ];
+/**
+ * 임원 문턱. 연말 평가가 상대평가가 되면서 평판이 쌓이는 속도가 줄어든 만큼(15년차 평판 p90 83 → 68) 문턱을 같이 내려
+ * 비슷한 분위수를 유지한다. VP는 순수 실력보다 조직을 맡아 온 이력과 평판으로 오르는 자리라 OVR 문턱을 더 낮췄다.
+ */
 export const MGMT_RULES: readonly TitleRule[] = [
-  { title: 'CTO', minOvr: 85, minReputation: 85, minCareerYear: 15, tiers: CTO_TIERS },
-  { title: 'VP of Engineering', minOvr: 80, minReputation: 70, minCareerYear: 12 },
+  { title: 'CTO', minOvr: 83, minReputation: 80, minCareerYear: 15, tiers: CTO_TIERS },
+  { title: 'VP of Engineering', minOvr: 76, minReputation: 65, minCareerYear: 12 },
   { title: '팀장', minOvr: 0 },
 ];
 /** 조건을 채워도 그 해 별점이 이보다 낮으면 승진이 보류된다 */
