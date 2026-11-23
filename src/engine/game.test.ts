@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { apply, NEGOTIATE_CHOICES, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
+import { apply, NEGOTIATE_CHOICES, NEGOTIATE_MIN_YEARS_AT_COMPANY, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
 import { STOCK_GRANT_MULT } from './company';
 import { marketSalary, NEGOTIATE_BONUS, NEGOTIATE_CAP, NEGOTIATE_FAIL_RAISE, negotiateChance, RAISE_BY_RATING } from './salary';
 import { createRng } from './rng';
@@ -249,9 +249,11 @@ describe('상점', () => {
   };
   const evX: GameEvent = { id: 'x', when: {}, scheduledOnly: true, text: 'x', choices: [{ label: 'x', effects: {} }] };
   const c: Content = { ...CONTENT, events: { ...CONTENT.events, x: evX } };
+  /** 별점이 높아 협상이 열렸으면 제시안에 사인하고 넘어간다 */
+  const pastNegotiation = (g: Game) => (pending(g).kind === 'negotiate' ? apply(g, { t: 'pick', i: 0 }, c) : g);
 
   it('연말 평가 뒤, 살 수 있는 물건이 있으면 상점이 열린다 (이직 제안보다 먼저)', () => {
-    const g = apply(atReview(100_000), { t: 'pick', i: 0 }, c);
+    const g = pastNegotiation(apply(atReview(100_000), { t: 'pick', i: 0 }, c));
     const p = pending(g);
     expect(p.kind).toBe('shop');
     if (p.kind !== 'shop') return;
@@ -264,7 +266,7 @@ describe('상점', () => {
     expect(pending(g).kind).not.toBe('shop');
   });
   it('사면 돈이 빠지고 기록되며, 건너뛰면 그대로다', () => {
-    const g = apply(atReview(100_000), { t: 'pick', i: 0 }, c);
+    const g = pastNegotiation(apply(atReview(100_000), { t: 'pick', i: 0 }, c));
     const p = pending(g);
     if (p.kind !== 'shop') throw new Error('expected shop');
     const item = c.shop[p.items[0]];
@@ -360,10 +362,15 @@ describe('연봉 협상', () => {
   const cx: Content = { ...CONTENT, events: { ...CONTENT.events, x: evX } };
   const atReview = (over: Partial<Game['state']> = {}): Game => ({
     setup, seed: 1, rngState: 1,
-    state: makeState({ yearsInCareer: 2, age: 30, ...over }),
+    state: makeState({ yearsInCareer: 2, yearsAtCompany: 2, age: 30, ...over }),
     queue: [{ kind: 'event', eventId: 'x' }, { kind: 'review' }], log: [], feed: [],
   });
 
+  it('입사 첫해 연말에는 협상이 없다 (입사 때 이미 연봉을 정했다)', () => {
+    const kinds = (g: Game) => g.queue.map((p) => p.kind);
+    expect(kinds(apply(atReview({ yearScore: 50, yearsAtCompany: 1 }), { t: 'pick', i: 0 }, cx))).not.toContain('negotiate');
+    expect(kinds(apply(atReview({ yearScore: 50, yearsAtCompany: NEGOTIATE_MIN_YEARS_AT_COMPANY }), { t: 'pick', i: 0 }, cx))).toContain('negotiate');
+  });
   it('별점 4 이상이면 상점보다 먼저 협상이 열린다', () => {
     const g = apply(atReview({ yearScore: 50 }), { t: 'pick', i: 0 }, cx);
     const p = pending(g);

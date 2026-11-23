@@ -74,9 +74,26 @@ export function runYear(s: GameState, rng: Rng, c: Content): { state: GameState;
   };
 }
 
+/**
+ * 연말 평가 점수. 상대평가라 실력 차이(OVR − 회사 레벨)는 ±PERF_SKILL_CAP까지만 절반 무게로,
+ * 그 해 장애 성적(yearScore)은 ±PERF_YEAR_CAP까지만 반영한다. noise는 rng.int(−6, 6).
+ * 현실 기준(국내 대기업·IT 강제 배분 통념): S 10~15%, A 25~30%, B 약 40%, C 10~15%, D 3~5%.
+ */
+export const PERF_SKILL_CAP = 10;
+export const PERF_YEAR_CAP = 6;
+export function performance(o: number, level: number, yearScore: number, noise: number): number {
+  return Math.round(clamp(o - level, -PERF_SKILL_CAP, PERF_SKILL_CAP) / 2) + clamp(yearScore, -PERF_YEAR_CAP, PERF_YEAR_CAP) + noise;
+}
+
+/**
+ * 별점(1~5)별 평판 변화. 인덱스 0은 쓰지 않는다. B는 "기대 충족"이라 한 해를 무난히 해내면 평판이 조금 쌓인다
+ * (평판은 사내 평가만이 아니라 같이 일한 사람들의 기억이다). 상대평가로 S가 드물어진 만큼 A·B 몫을 둔다.
+ */
+export const REPUTATION_BY_RATING = [0, -3, -1, 2, 4, 6];
+
 export function ratingFromPerf(perf: number): number {
-  if (perf <= -8) return 1;
-  if (perf <= -3) return 2;
+  if (perf <= -9) return 1;
+  if (perf <= -5) return 2;
   if (perf <= 3) return 3;
   if (perf <= 8) return 4;
   return 5;
@@ -86,10 +103,8 @@ export function ratingFromPerf(perf: number): number {
 export function review(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[]; rating: number } {
   const company = effectiveCompany(s.companyId, s, c);
   const o = ovr(s.stats, s.position);
-  const role = roleFor(o, company.level);
-  const perf = o - company.level + (role === 'owner' ? 3 : 0) + s.yearScore + rng.int(-6, 6);
-  const rating = ratingFromPerf(perf);
-  const reputation = clamp(s.reputation + (rating - 3) * 3, 0, 100);
+  const rating = ratingFromPerf(performance(o, company.level, s.yearScore, rng.int(-6, 6)));
+  const reputation = clamp(s.reputation + REPUTATION_BY_RATING[rating], 0, 100);
   const decided = nextTitle(s.title, computeTitle({ ...s, reputation }, o, company.tier));
   const held = decided.kind === 'promoted' && rating < PROMOTION_MIN_RATING;
   const { title, kind } = held ? { title: s.title, kind: undefined } : decided;

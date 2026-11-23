@@ -3,7 +3,7 @@ import { CONTENT } from '../content';
 import { withJosa } from './josa';
 import { createRng } from './rng';
 import { PROMOTION_MIN_RATING } from './roles';
-import { ageFactor, RETIRE_AGE, review, runYear } from './season';
+import { ageFactor, PERF_SKILL_CAP, REPUTATION_BY_RATING, PERF_YEAR_CAP, performance, ratingFromPerf, RETIRE_AGE, review, runYear } from './season';
 import { makeState } from './testing';
 
 const total = (s: Record<string, number>) => Object.values(s).reduce((a, b) => a + b, 0);
@@ -144,5 +144,42 @@ describe('승진 보류', () => {
     const s = makeState({ title: '프린시펄', track: 'mgmt', yearScore: -12 });
     const r = reviewWithRating(s, (x) => x <= 2);
     expect(r.state.title).toBe('팀장');
+  });
+});
+
+describe('연말 평가 (상대평가)', () => {
+  it('실력 차이는 ±PERF_SKILL_CAP까지만, 절반 무게로 반영한다', () => {
+    expect(performance(90, 40, 0, 0)).toBe(performance(40 + PERF_SKILL_CAP, 40, 0, 0));
+    expect(performance(40 + PERF_SKILL_CAP, 40, 0, 0)).toBe(PERF_SKILL_CAP / 2);
+    expect(performance(20, 60, 0, 0)).toBe(-PERF_SKILL_CAP / 2);
+    expect(performance(44, 40, 0, 0)).toBe(2);
+  });
+  it('그 해 장애 성적은 ±PERF_YEAR_CAP까지만', () => {
+    expect(performance(40, 40, -20, 0)).toBe(-PERF_YEAR_CAP);
+    expect(performance(40, 40, 30, 0)).toBe(PERF_YEAR_CAP);
+    expect(performance(40, 40, 3, 2)).toBe(5);
+  });
+  it('별점 문턱', () => {
+    expect([-9, -8, -5, -4, 3, 4, 8, 9].map(ratingFromPerf)).toEqual([1, 2, 2, 3, 3, 4, 4, 5]);
+  });
+  it('평판은 별점표대로: B(3점)도 조금 쌓이고 C·D는 깎인다', () => {
+    expect(REPUTATION_BY_RATING[3]).toBeGreaterThan(0);
+    expect(REPUTATION_BY_RATING[2]).toBeLessThan(0);
+    for (let k = 1; k < 5; k++) expect(REPUTATION_BY_RATING[k + 1]).toBeGreaterThan(REPUTATION_BY_RATING[k]);
+    for (let seed = 1; seed <= 20; seed++) {
+      const r = review(makeState({ reputation: 40 }), createRng(seed), CONTENT);
+      expect(r.state.reputation).toBe(40 + REPUTATION_BY_RATING[r.rating]);
+    }
+  });
+  it('회사보다 훨씬 잘해도 S는 절반이 안 되고, 평범한 해에는 B가 가장 많다', () => {
+    const tally = (s: ReturnType<typeof makeState>) => {
+      const n = [0, 0, 0, 0, 0, 0];
+      for (let seed = 1; seed <= 400; seed++) n[review(s, createRng(seed), CONTENT).rating] += 1;
+      return n.map((x) => x / 400);
+    };
+    const strong = { impl: 90, design: 90, debug: 90, infra: 90, ai: 90, mental: 90 };
+    expect(tally(makeState({ stats: strong }))[5]).toBeLessThan(0.5);
+    const even = tally(makeState());
+    expect(even[3]).toBeGreaterThan(Math.max(even[1], even[2], even[4], even[5]));
   });
 });

@@ -53,6 +53,8 @@ const pick = (i: number): Input => ({ t: 'pick', i });
 export const NEGOTIATE_CHOICES = ['제시안에 사인한다', '조금만 더 올려 달라고 한다', '인상 대신 스톡옵션을 받는다'] as const;
 /** 협상이 열리는 최소 별점 */
 export const NEGOTIATE_MIN_RATING = 4;
+/** 협상이 열리는 최소 근속 (입사 첫해 연말은 입사 때 연봉을 정했으니 조정 대상에서 빠진다) */
+export const NEGOTIATE_MIN_YEARS_AT_COMPANY = 2;
 
 /** 첫 해 전에 거치는 취준·인턴 프롤로그의 시작 이벤트 (콘텐츠에 있을 때만) */
 export const PROLOGUE_START = 'prologue-start';
@@ -313,7 +315,7 @@ function drain(g: Game, c: Content): Game {
       }
       // 엑싯처럼 성장 판정으로 은퇴했으면 협상·상점·제안 없이 엔딩으로 간다
       if (!state.retired) {
-        if (r.rating >= NEGOTIATE_MIN_RATING && !closed && !state.flags.includes('founder'))
+        if (r.rating >= NEGOTIATE_MIN_RATING && state.yearsAtCompany >= NEGOTIATE_MIN_YEARS_AT_COMPANY && !closed && !state.flags.includes('founder'))
           q.push({ kind: 'negotiate', rating: r.rating, base: state.salary, prev: game.state.salary, prevMax: game.state.maxSalary });
         const items = pickShopItems(state, rng, c);
         if (items.length > 0) q.push({ kind: 'shop', items });
