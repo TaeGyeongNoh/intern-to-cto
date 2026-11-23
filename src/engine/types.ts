@@ -196,6 +196,8 @@ export type GameState = {
     incidentsTotal: number;
     incidentsResolved: number;
     mttrTotalMin: number;
+    /** 복구하면서 MTTR이 FAST_MTTR분 이하였던 장애 수 */
+    fastResolves: number;
     history: HistoryRow[];
     story: string[];
   };

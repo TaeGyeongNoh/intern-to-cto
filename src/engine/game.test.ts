@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { apply, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
 import { createRng } from './rng';
+import { FAST_MTTR } from './incident';
 import { RETIRE_AGE } from './season';
 import { makeState } from './testing';
 import type { Content, GameEvent } from './types';
@@ -190,6 +191,20 @@ describe('장애 흐름', () => {
       seen.add(r.state.yearScore);
     }
     expect(seen).toEqual(new Set([3, -5]));
+  });
+  it('복구하면서 MTTR이 FAST_MTTR분 이하일 때만 fastResolves가 +1', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed < 200; seed++) {
+      const clues = seed % 4;
+      const g: Game = { ...base(['apm']), rngState: seed, queue: [{ kind: 'incident-action', incidentId: 'payment-latency', clues }, { kind: 'review' }] };
+      const r = apply(g, { t: 'pick', i: 0 }, CONTENT);
+      const ok = r.state.record.incidentsResolved === 1;
+      const mttr = r.state.record.mttrTotalMin - g.state.record.mttrTotalMin;
+      const fast = ok && mttr <= FAST_MTTR;
+      expect(r.state.record.fastResolves, `seed ${seed}`).toBe(g.state.record.fastResolves + (fast ? 1 : 0));
+      seen.add(ok ? (fast ? 'fast' : 'slow') : 'fail');
+    }
+    expect(seen).toEqual(new Set(['fast', 'slow', 'fail']));
   });
 });
 

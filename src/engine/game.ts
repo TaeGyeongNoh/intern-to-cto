@@ -2,7 +2,7 @@ import { determineEnding, generateOffers, joinCompany, moveToCompany, type Offer
 import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
-import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
+import { actionChance, FAST_MTTR, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
 import { diffState, type Outcome } from './outcome';
 import { createRng } from './rng';
 import { review, runYear } from './season';
@@ -181,6 +181,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
           incidentsTotal: s.record.incidentsTotal + 1,
           incidentsResolved: s.record.incidentsResolved + (ok ? 1 : 0),
           mttrTotalMin: s.record.mttrTotalMin + mttr,
+          fastResolves: s.record.fastResolves + (ok && mttr <= FAST_MTTR ? 1 : 0),
         },
       };
       result = { title: a.label, ok, detail: `MTTR ${mttr}분` };

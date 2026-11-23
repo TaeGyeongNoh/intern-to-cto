@@ -25,6 +25,9 @@ export function shuffledOrder(n: number, rng: Rng): number[] {
   return a;
 }
 
+/** 이 시간(분) 이하로 복구하면 '빠른 복구'로 센다 */
+export const FAST_MTTR = 120;
+
 export function mttrMinutes(resolved: boolean, clues: number, rng: Rng): number {
   return resolved ? Math.max(5, 240 - clues * 60 + rng.int(-20, 20)) : 360 + rng.int(0, 240);
 }
