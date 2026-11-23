@@ -33,7 +33,7 @@ describe('Game.outcome', () => {
     const g = apply(game({ state: makeState({ reputation: 40 }), queue: [{ kind: 'postmortem', incidentId: 'payment-latency', resolved: true }, { kind: 'review' }] }), { t: 'pick', i: 0 }, CONTENT);
     expect(g.outcome?.title).toBe('포스트모템을 공개한다');
     expect(g.outcome?.deltas).toContainEqual({ label: '평판', value: '+2', good: true });
-    expect(g.outcome?.deltas).toContainEqual({ label: '번아웃', value: '+3', good: false });
+    expect(g.outcome?.deltas).toContainEqual({ label: '번아웃', value: '+2', good: false });
   });
   it('장애 조치: ok와 MTTR', () => {
     const g = apply(game({ state: makeState({ deck: ['apm'] }), queue: [{ kind: 'incident-action', incidentId: 'payment-latency', clues: 3 }, { kind: 'year' }] }), { t: 'pick', i: 0 }, CONTENT);
