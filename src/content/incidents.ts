@@ -5,6 +5,7 @@ export const INCIDENTS: Incident[] = [
     id: 'payment-latency',
     title: '결제 API 응답 지연',
     when: { route: ['commerce', 'finance'] },
+    positions: ['backend', 'sre'],
     summary: '알람: 결제 API p95 4.2초. 고객센터 전화가 울리기 시작했다.',
     aiHint: '응답시간 분포부터 확인하세요.',
     steps: [
@@ -42,6 +43,7 @@ export const INCIDENTS: Incident[] = [
     id: 'db-lock',
     title: '정산 배치 중 DB 락 대기',
     when: { route: ['finance'] },
+    positions: ['backend'],
     summary: '오전 9시, 주문 조회가 전부 멈췄다. 정산 배치가 돌고 있다.',
     aiHint: 'DB 세션과 락부터 확인하세요.',
     steps: [
@@ -79,6 +81,7 @@ export const INCIDENTS: Incident[] = [
     id: 'oom-kill',
     title: '파드가 계속 재시작된다 (OOMKilled)',
     when: {},
+    positions: ['sre', 'backend'],
     summary: 'API 파드가 5분마다 죽고 살아난다. 배포는 어제 저녁에 나갔다.',
     aiHint: '파드 상태와 재시작 사유부터 보세요.',
     steps: [
@@ -116,6 +119,7 @@ export const INCIDENTS: Incident[] = [
     id: 'token-bomb',
     title: '이번 달 LLM 비용이 3배',
     when: { route: ['ai-startup'] },
+    positions: ['ai', 'backend'],
     summary: 'CFO가 청구서를 들고 왔다. 지난달의 세 배다.',
     aiHint: '토큰·비용을 에이전트별로 나눠 보세요.',
     steps: [
@@ -153,6 +157,7 @@ export const INCIDENTS: Incident[] = [
     id: 'hallucination',
     title: '챗봇이 없는 환불 정책을 안내했다',
     when: { route: ['ai-startup', 'commerce'] },
+    positions: ['ai'],
     summary: '커뮤니티에 챗봇 답변 캡처가 돈다. "전 상품 무조건 200% 환불".',
     aiHint: '응답 품질 지표에서 hallucination부터 확인하세요.',
     steps: [
@@ -190,6 +195,7 @@ export const INCIDENTS: Incident[] = [
     id: 'frontend-js-error',
     title: '결제 버튼이 눌리지 않는다',
     when: { route: ['commerce', 'ai-startup'] },
+    positions: ['frontend'],
     summary: '서버 대시보드는 전부 초록색인데, 고객센터에는 "결제 버튼이 안 눌려요" 문의가 쌓인다.',
     aiHint: '서버가 멀쩡하면 브라우저 쪽을 의심하세요.',
     steps: [
@@ -224,9 +230,124 @@ export const INCIDENTS: Incident[] = [
     ],
   },
   {
+    id: 'cdn-cache',
+    title: '배포 후 화면이 하얗다',
+    when: { route: ['commerce', 'finance'] },
+    positions: ['frontend'],
+    summary: '배포 30분 뒤부터 "화면이 하얘요" 문의가 온다. 새로고침하면 되는 사람도, 안 되는 사람도 있다.',
+    aiHint: '사용자마다 증상이 다르면 캐시를 의심하세요.',
+    steps: [
+      {
+        prompt: '어디부터 볼까?',
+        options: [
+          { label: '브라우저 에러를 연다', view: 'rum', correct: true, clue: '일부 사용자에게서만 ChunkLoadError가 쏟아진다' },
+          { label: '서버 CPU를 본다', view: 'server-metrics', correct: false },
+          { label: 'nginx access 로그를 grep', view: 'grep', correct: false },
+        ],
+      },
+      {
+        prompt: '왜 일부만 깨질까?',
+        options: [
+          { label: '로그에서 배포·캐시 설정을 찾는다', view: 'log-search', correct: true, clue: 'CDN이 index.html을 1시간 캐시한다. 옛 index.html이 이미 지워진 청크를 부른다' },
+          { label: 'DB 락을 본다', view: 'db-locks', correct: false },
+          { label: '빌드 산출물을 grep', view: 'grep', correct: false },
+        ],
+      },
+      {
+        prompt: '오리진 서버는 괜찮나?',
+        options: [
+          { label: '토폴로지로 구간을 본다', view: 'topology', correct: true, clue: 'CDN 구간만 빨갛다. 오리진은 멀쩡하다' },
+          { label: '파드 상태를 본다', view: 'pods', correct: false },
+          { label: '오리진 서버에 ssh로 들어간다', view: 'grep', correct: false },
+        ],
+      },
+    ],
+    actions: [
+      { label: 'index.html 캐시 무효화 + 옛 청크 보존 배포', baseChance: 0.25, perClue: 0.22, effects: { reputation: 3, stats: { debug: 1, infra: 1 } }, failEffects: { reputation: -3, burnout: 5 } },
+      { label: '"강력 새로고침(Ctrl+Shift+R)" 안내 공지', baseChance: 0.3, perClue: 0.1, effects: { reputation: -1 }, failEffects: { reputation: -3 } },
+    ],
+  },
+  {
+    id: 'lcp-regression',
+    title: '메인 페이지가 느려졌다',
+    when: { route: ['commerce', 'ai-startup'] },
+    positions: ['frontend'],
+    summary: '캠페인 첫날, 메인 페이지 이탈률이 두 배가 됐다. 서버 응답은 50ms로 멀쩡하다.',
+    aiHint: '서버가 빠르면 브라우저가 무엇을 받는지 보세요.',
+    steps: [
+      {
+        prompt: '어디부터 볼까?',
+        options: [
+          { label: '브라우저 성능을 연다', view: 'rum', correct: true, clue: '메인 페이지 LCP가 1.8초에서 7.2초로 뛰었다. 모바일이 특히 심하다' },
+          { label: '서버 메트릭을 본다', view: 'server-metrics', correct: false },
+          { label: '웹 서버 로그를 grep', view: 'grep', correct: false },
+        ],
+      },
+      {
+        prompt: '무엇이 무거워졌지?',
+        options: [
+          { label: '로그에서 콘텐츠 변경 이력을 찾는다', view: 'log-search', correct: true, clue: '어제 CMS에서 히어로 배너가 12MB짜리 원본 PNG로 교체됐다' },
+          { label: 'DB 락을 본다', view: 'db-locks', correct: false },
+          { label: '정적 파일 목록을 grep', view: 'grep', correct: false },
+        ],
+      },
+      {
+        prompt: '정말 서버 탓은 아닌가?',
+        options: [
+          { label: '트레이스로 HTML 응답을 본다', view: 'trace', correct: true, clue: 'HTML 응답은 48ms. 느린 건 서버가 아니라 이미지 다운로드다' },
+          { label: '파드 상태를 본다', view: 'pods', correct: false },
+          { label: 'top으로 CPU를 본다', view: 'grep', correct: false },
+        ],
+      },
+    ],
+    actions: [
+      { label: '배너를 WebP 반응형 이미지로 교체', baseChance: 0.25, perClue: 0.22, effects: { reputation: 3, stats: { debug: 1, impl: 1 } }, failEffects: { reputation: -3, burnout: 5 } },
+      { label: '"로딩 중" 스피너를 더 예쁘게 만든다', baseChance: 0.3, perClue: 0.1, effects: { reputation: -1 }, failEffects: { reputation: -3 } },
+    ],
+  },
+  {
+    id: 'spa-memory-leak',
+    title: '대시보드 탭이 브라우저를 멈춘다',
+    when: {},
+    positions: ['frontend'],
+    summary: '"대시보드를 켜 두면 오후쯤 노트북 팬이 이륙해요." 운영팀의 제보가 쌓인다.',
+    aiHint: '시간이 지날수록 나빠지면 누수를 의심하세요.',
+    steps: [
+      {
+        prompt: '어디부터 볼까?',
+        options: [
+          { label: '브라우저 성능을 연다', view: 'rum', correct: true, clue: '/dashboard에서만 세션이 길수록 응답이 느려진다' },
+          { label: '서버 CPU를 본다', view: 'server-metrics', correct: false },
+          { label: '프론트 서버 로그를 grep', view: 'grep', correct: false },
+        ],
+      },
+      {
+        prompt: '무엇이 쌓이고 있지?',
+        options: [
+          { label: '로그에서 구독 이벤트를 찾는다', view: 'log-search', correct: true, clue: '탭을 전환할 때마다 ws subscribe가 찍히고 unsubscribe는 한 번도 없다' },
+          { label: 'DB 락을 본다', view: 'db-locks', correct: false },
+          { label: '번들에서 setInterval을 grep', view: 'grep', correct: false },
+        ],
+      },
+      {
+        prompt: '서버도 영향을 받나?',
+        options: [
+          { label: '트레이스로 연결을 본다', view: 'trace', correct: true, clue: '한 사용자가 웹소켓 연결을 수십 개 열고 있다. 클라이언트가 구독을 계속 늘린다' },
+          { label: '파드 상태를 본다', view: 'pods', correct: false },
+          { label: '서버를 재시작해 본다', view: 'grep', correct: false },
+        ],
+      },
+    ],
+    actions: [
+      { label: '언마운트 때 구독 해제 + 연결 재사용', baseChance: 0.25, perClue: 0.22, effects: { reputation: 3, stats: { debug: 1, design: 1 } }, failEffects: { reputation: -3, burnout: 5 } },
+      { label: '"30분마다 새로고침해 주세요" 공지', baseChance: 0.3, perClue: 0.1, effects: { reputation: -1 }, failEffects: { reputation: -3 } },
+    ],
+  },
+  {
     id: 'gpu-oom',
     title: '추론 서버 CUDA out of memory',
     when: { route: ['ai-startup'] },
+    positions: ['ai', 'sre'],
     summary: '데모 데이 30분 전. 추론 API가 절반 확률로 500을 돌려준다.',
     aiHint: 'GPU 메모리부터 보세요.',
     steps: [
@@ -264,6 +385,7 @@ export const INCIDENTS: Incident[] = [
     id: 'slow-query',
     title: '조회 화면이 30초씩 걸린다',
     when: { route: ['finance', 'commerce'] },
+    positions: ['backend'],
     summary: '월요일 아침, 내역 조회 화면이 로딩 스피너만 돌린다. 장애인지 아닌지 애매하게 느리다.',
     aiHint: '느린 트랜잭션의 SQL부터 보세요.',
     steps: [
@@ -301,6 +423,7 @@ export const INCIDENTS: Incident[] = [
     id: 'prompt-injection',
     title: '챗봇이 시스템 프롬프트를 읊었다',
     when: { route: ['ai-startup'] },
+    positions: ['ai'],
     summary: '보안 커뮤니티에 우리 챗봇의 시스템 프롬프트 전문이 올라왔다. 내부 도구 이름까지 그대로다.',
     aiHint: '응답 품질에서 이상 응답부터 찾으세요.',
     steps: [

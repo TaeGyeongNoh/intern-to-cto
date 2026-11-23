@@ -79,3 +79,15 @@ describe('validateContent', () => {
     expect(errs).toContain('position sre: needs at least 3 archetypes');
   });
 });
+
+describe('장애 포지션', () => {
+  it('모르는 포지션은 오류', () => {
+    const inc = { ...CONTENT.incidents['db-lock'], positions: ['designer' as never] };
+    const errs = validateContent({ ...CONTENT, incidents: { ...CONTENT.incidents, 'db-lock': inc } });
+    expect(errs.some((e) => e.includes('unknown position designer'))).toBe(true);
+  });
+  it('포지션마다 주 담당 장애가 3종 이상이어야 한다', () => {
+    const incidents = Object.fromEntries(Object.entries(CONTENT.incidents).filter(([, i]) => !i.positions?.includes('sre') || i.id === 'oom-kill'));
+    expect(validateContent({ ...CONTENT, incidents }).some((e) => e.includes('position sre: needs at least 3 incidents'))).toBe(true);
+  });
+});

@@ -36,7 +36,9 @@ export function validateContent(c: Content): string[] {
     });
   }
 
+  const positions = new Set<string>(POSITION_IDS);
   for (const inc of Object.values(c.incidents)) {
+    for (const p of inc.positions ?? []) if (!positions.has(p)) errs.push(`incident ${inc.id}: unknown position ${p}`);
     if (inc.actions.length === 0) errs.push(`incident ${inc.id}: no actions`);
     inc.steps.forEach((st, i) => {
       if (!st.options.some((o) => o.correct)) errs.push(`incident ${inc.id} step ${i}: no correct option`);
@@ -79,7 +81,6 @@ export function validateContent(c: Content): string[] {
     ids.add(e.id);
   }
   const statIds = new Set<string>(STAT_IDS);
-  const positions = new Set<string>(POSITION_IDS);
   for (const [key, a] of Object.entries(c.archetypes)) {
     const where = `archetype ${a.id}`;
     if (key !== a.id) errs.push(`archetype key ${key} != id ${a.id}`);
@@ -92,6 +93,10 @@ export function validateContent(c: Content): string[] {
   for (const p of POSITION_IDS) {
     const n = Object.values(c.archetypes).filter((a) => a.positions.includes(p)).length;
     if (n < 3) errs.push(`position ${p}: needs at least 3 archetypes`);
+  }
+  for (const p of POSITION_IDS) {
+    const n = Object.values(c.incidents).filter((i) => !i.positions?.length || i.positions.includes(p)).length;
+    if (n < 3) errs.push(`position ${p}: needs at least 3 incidents`);
   }
   if (!c.endings.some((e) => e.priority === 0)) errs.push('missing fallback ending (priority 0)');
   return errs;

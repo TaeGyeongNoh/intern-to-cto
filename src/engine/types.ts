@@ -91,6 +91,8 @@ export type IncidentOption = { label: string; view: ViewId; correct: boolean; cl
 export type IncidentStep = { prompt: string; options: IncidentOption[] };
 export type IncidentAction = { label: string; baseChance: number; perClue: number; effects: Effects; failEffects: Effects };
 export type Incident = {
+  /** 주 담당 포지션. 없으면 모두. 아니면 OFF_ROLE_WEIGHT배로 드물게 '지원 호출'로 뜬다 */
+  positions?: PositionId[];
   id: string;
   title: string;
   when: Condition;

@@ -1,9 +1,15 @@
 import { availableViews, matches } from './conditions';
 import type { Rng } from './rng';
-import type { CardId, Content, GameState, IncidentAction, IncidentOption } from './types';
+import type { CardId, Content, GameState, Incident, IncidentAction, IncidentOption, PositionId } from './types';
 import { clamp } from './util';
 
 export const POSTMORTEM_CHOICES = ['포스트모템을 공개한다', '조용히 덮는다', '다른 팀 탓을 한다'] as const;
+
+/** 주 담당이 아닌 포지션에게 장애가 뽑힐 가중치 배수 */
+export const OFF_ROLE_WEIGHT = 0.25;
+
+export const isOffRole = (inc: Incident, position: PositionId): boolean =>
+  !!inc.positions?.length && !inc.positions.includes(position);
 
 export function actionChance(a: IncidentAction, clues: number, debug: number): number {
   return clamp(a.baseChance + a.perClue * clues + (debug - 50) / 200, 0.05, 0.95);
@@ -38,7 +44,7 @@ export function pickIncidents(s: GameState, rng: Rng, c: Content): string[] {
   const pool = Object.values(c.incidents).filter((i) => !forced.includes(i.id) && matches(i.when, s));
   const chosen = [...forced];
   for (let k = 0; k < count && pool.length > 0; k++) {
-    const inc = rng.weighted(pool.map((i) => ({ item: i, weight: i.weight ?? 1 })));
+    const inc = rng.weighted(pool.map((i) => ({ item: i, weight: (i.weight ?? 1) * (isOffRole(i, s.position) ? OFF_ROLE_WEIGHT : 1) })));
     chosen.push(inc.id);
     pool.splice(pool.indexOf(inc), 1);
   }

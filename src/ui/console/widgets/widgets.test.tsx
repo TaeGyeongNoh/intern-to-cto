@@ -50,7 +50,7 @@ describe('console widgets', () => {
       expect(incidentOf('db-lock:trace')).toBe('db-lock');
       expect(flavorOf('nope:trace')).toBe(flavorOf('t'));
       expect(flavorOf('db-lock:trace')).not.toBe(flavorOf('t'));
-      for (const id of ['payment-latency', 'db-lock', 'oom-kill', 'token-bomb', 'hallucination', 'frontend-js-error', 'gpu-oom', 'slow-query', 'prompt-injection']) {
+      for (const id of ['payment-latency', 'db-lock', 'oom-kill', 'token-bomb', 'hallucination', 'frontend-js-error', 'gpu-oom', 'slow-query', 'prompt-injection', 'cdn-cache', 'lcp-regression', 'spa-memory-leak']) {
         expect(FLAVOR_IDS, id).toContain(id);
       }
     });
@@ -66,6 +66,9 @@ describe('console widgets', () => {
     });
 
     it('위젯 내용이 단서와 맞는다', () => {
+      expect(render('cdn-cache', 'log-search')).toContain('index.html');
+      expect(render('lcp-regression', 'log-search')).toContain('hero-banner');
+      expect(render('spa-memory-leak', 'log-search')).toContain('ws subscribe');
       expect(render('db-lock', 'trace')).toContain('UPDATE orders');
       expect(render('db-lock', 'db-locks')).toContain('settlement-batch');
       expect(render('db-lock', 'log-search')).toContain('settlement-batch schedule changed');
