@@ -32,4 +32,29 @@ describe('simulate', () => {
       expect(Object.values(x.endings).reduce((a, b) => a + b, 0)).toBe(x.games);
     }
   });
+  it('비프롤로그 이벤트 수와 반복 비율을 낸다', () => {
+    const r = simulate(100, CONTENT);
+    expect(r.avgEvents).toBeGreaterThan(3);
+    expect(r.repeatShare).toBeGreaterThan(0);
+    expect(r.repeatShare).toBeLessThan(1);
+  });
+  it('포지션별 판 수와 엔딩을 집계한다', () => {
+    const r = simulate(100, CONTENT);
+    expect(Object.values(r.byPosition).reduce((a, x) => a + x.games, 0)).toBe(100);
+  });
+  it('기본 정책은 random이고, 정책마다 결정론적이다', () => {
+    expect(simulate(20, CONTENT, 3, 'random')).toEqual(simulate(20, CONTENT, 3));
+    for (const policy of ['skilled', 'loyal'] as const) expect(simulate(20, CONTENT, 3, policy)).toEqual(simulate(20, CONTENT, 3, policy));
+    expect(simulate(20, CONTENT, 3, 'skilled')).not.toEqual(simulate(20, CONTENT, 3, 'random'));
+  });
+  it('skilled: 단서를 더 많이 찾아 해결률이 높고, SRE 판에서 전설의 SRE가 나온다', () => {
+    const skilled = simulate(200, CONTENT, 1, 'skilled');
+    const random = simulate(200, CONTENT, 1);
+    expect(skilled.incidentResolveRate).toBeGreaterThan(random.incidentResolveRate);
+    expect(skilled.byPosition.sre.endings['legend-sre'] ?? 0).toBeGreaterThanOrEqual(1);
+  });
+  it('loyal: 이직하지 않아서 원컴퍼니맨이 나온다', () => {
+    const r = simulate(100, CONTENT, 1, 'loyal');
+    expect(r.endings['one-company'] ?? 0).toBeGreaterThanOrEqual(1);
+  });
 });
