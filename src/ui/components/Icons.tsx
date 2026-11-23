@@ -63,6 +63,10 @@ import {
   PiggyBank as LPiggyBank,
   Store as LStore,
   TreePalm as LTreePalm,
+  Handshake as LHandshake,
+  FilePenLine as LFilePenLine,
+  Ticket as LTicket,
+  Building2 as LBuilding2,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react';
@@ -145,6 +149,10 @@ export const Keyboard = make(LKeyboard, 'Keyboard');
 export const PiggyBank = make(LPiggyBank, 'PiggyBank');
 export const Store = make(LStore, 'Store');
 export const TreePalm = make(LTreePalm, 'TreePalm');
+export const Handshake = make(LHandshake, 'Handshake');
+export const FilePenLine = make(LFilePenLine, 'FilePenLine');
+export const Ticket = make(LTicket, 'Ticket');
+export const Building2 = make(LBuilding2, 'Building2');
 
 export type IconTone = 'muted' | 'primary' | 'good' | 'warning' | 'critical' | 'inherit';
 

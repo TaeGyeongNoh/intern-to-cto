@@ -3,6 +3,7 @@
 .kicker { display: inline-flex; font-size: 12px; font-weight: 700; color: var(--primary); }
 .title { margin: 6px 0 4px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; word-break: keep-all; }
 .now { margin: 0; font-size: 13px; color: var(--text-2); }
+.warn { margin: 6px 0 0; font-size: 13px; font-weight: 700; color: var(--critical); word-break: keep-all; }
 
 .list { display: grid; gap: 12px; padding-top: 16px; }
 

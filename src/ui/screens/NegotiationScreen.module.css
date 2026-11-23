@@ -1,0 +1,2 @@
+.summary { display: grid; gap: 4px; margin: -4px 0 16px; padding: 10px 12px; border-radius: var(--radius-m); background: var(--bg); min-width: 0; }
+.salary { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

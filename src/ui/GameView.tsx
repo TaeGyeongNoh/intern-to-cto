@@ -3,6 +3,7 @@ import { IncidentConsole } from './console/IncidentConsole';
 import { EndingScreen } from './screens/EndingScreen';
 import { EventCard } from './screens/EventCard';
 import { HomeScreen } from './screens/HomeScreen';
+import { NegotiationScreen } from './screens/NegotiationScreen';
 import { OfferScreen } from './screens/OfferScreen';
 import { PostmortemCard } from './screens/PostmortemCard';
 import { ShopScreen } from './screens/ShopScreen';
@@ -29,10 +30,12 @@ export function GameView({ game, log, onInput, onRestart }: GameViewProps) {
       return <>{home}<IncidentConsole key={`${game.state.year}:${p.incidentId}`} game={game} onInput={onInput} /></>;
     case 'postmortem':
       return <>{home}<PostmortemCard game={game} incidentId={p.incidentId} resolved={p.resolved} onInput={onInput} /></>;
+    case 'negotiate':
+      return <>{home}<NegotiationScreen game={game} rating={p.rating} base={p.base} prev={p.prev} onInput={onInput} /></>;
     case 'shop':
       return <ShopScreen game={game} items={p.items} onInput={onInput} />;
     case 'offers':
-      return <OfferScreen game={game} offers={p.offers} onInput={onInput} />;
+      return <OfferScreen game={game} offers={p.offers} forced={!!p.forced} onInput={onInput} />;
     case 'review':
       return home;
     case 'ended':

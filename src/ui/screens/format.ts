@@ -43,6 +43,11 @@ export function feedIcon(line: string): { icon: IconType; tone: FeedTone } {
   if (/ — 성공 \(/.test(line)) return { icon: TrendingUp, tone: 'good' };
   if (/ — 실패 \(/.test(line)) return { icon: TrendingUp, tone: 'critical' };
   if (line.startsWith('순자산') || line.includes('지갑을 닫는다')) return { icon: PiggyBank, tone: 'muted' };
+  if (line.startsWith('승진 보류')) return { icon: TrendingUp, tone: 'warning' };
+  if (line.startsWith('스톡옵션')) return { icon: PiggyBank, tone: 'good' };
+  if (line.includes('문을 닫는다')) return { icon: CircleX, tone: 'critical' };
+  if (/(투자를 받았다|시리즈 C를 마쳤다|상장했다)\.?/.test(line)) return { icon: TrendingUp, tone: 'primary' };
+  if (line.startsWith('연봉 협상')) return { icon: ClipboardList, tone: 'muted' };
   if (line.includes('승진')) return { icon: TrendingUp, tone: 'good' };
   if (line.startsWith('복구 실패')) return { icon: CircleX, tone: 'critical' };
   if (line.startsWith('복구')) return { icon: CircleCheck, tone: 'good' };

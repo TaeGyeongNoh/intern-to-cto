@@ -92,3 +92,50 @@ describe('상점 정보', () => {
     expect(html).not.toContain(`>${CONTENT.shop.coin.name}<`);
   });
 });
+
+describe('회사 생활', () => {
+  it('협상 화면: 제시안, 득실 한 줄, 다음 직급 진행', async () => {
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '협상', position: 'ai', route: 'ai-startup', candidate: 0 }, 1, CONTENT);
+    const state = makeState({ companyId: 'rwttn', route: 'ai-startup', title: '시니어', salary: 5250, reputation: 30 });
+    const game = { ...g, state, queue: [{ kind: 'negotiate' as const, rating: 4, base: 5250, prev: 5000, prevMax: 5000 }, { kind: 'year' as const }] };
+    const html = renderToString(<GameView game={game} log={[]} onInput={() => {}} onRestart={() => {}} />);
+    expect(html).toContain('연봉 협상');
+    expect(html).toContain('연봉 5,000만원 → 5,250만원 (+5%)');
+    expect(html).toContain('제시안에 사인한다');
+    expect(html).toContain('성공 50%');
+    expect(html).toContain('인상 대신 스톡옵션을 받는다');
+    expect(html).toContain('스톡옵션 +1,000만원어치');
+    expect(html).toContain('다음 직급 스태프');
+  });
+  it('폐업 강제 이직: 제목이 바뀌고 남는다 버튼이 없다', async () => {
+    const { OfferScreen } = await import('./screens/OfferScreen');
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '폐업', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    const state = makeState({ companyId: 'tiny-commerce', companyStage: { 'tiny-commerce': 'closed' } });
+    const offers = [{ companyId: 'dangeun', role: 'main' as const, salary: 3900 }];
+    const game = { ...g, state, queue: [{ kind: 'offers' as const, offers, forced: true as const }] };
+    const html = renderToString(<OfferScreen game={game} offers={offers} forced onInput={() => {}} />);
+    expect(html).toContain('오늘의떡집이 문을 닫았다. 새 회사를 찾아야 한다');
+    expect(html).not.toContain('지금 회사에 남는다');
+  });
+  it('이직 제안에 스톡옵션 소멸 경고', async () => {
+    const { OfferScreen } = await import('./screens/OfferScreen');
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '경고', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    const state = makeState({ companyId: 'rwttn', stock: { companyId: 'rwttn', value: 1240 } });
+    const offers = [{ companyId: 'dangeun', role: 'main' as const, salary: 3900 }];
+    const html = renderToString(<OfferScreen game={{ ...g, state, queue: [{ kind: 'offers' as const, offers }] }} offers={offers} onInput={() => {}} />);
+    expect(html).toContain('이직하면 스톡옵션 1,240만원어치가 사라진다');
+    expect(html).toContain('지금 회사에 남는다');
+  });
+  it('홈 화면에 회사 단계 이름과 다음 직급 조건', async () => {
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '홈', position: 'ai', route: 'ai-startup', candidate: 0 }, 1, CONTENT);
+    const state = makeState({ companyId: 'rwttn', companyStage: { rwttn: 1 }, stock: { companyId: 'rwttn', value: 800 } });
+    const html = renderToString(<GameView game={{ ...g, state, queue: [{ kind: 'year' as const }] }} log={[]} onInput={() => {}} onRestart={() => {}} />);
+    expect(html).toContain('스타트업 · 시리즈 A');
+    expect(html).toContain('다음 직급 ');
+    expect(html).toContain('스톡옵션 800만원어치');
+  });
+});
