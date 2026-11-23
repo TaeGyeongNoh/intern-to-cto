@@ -109,6 +109,25 @@ export type Tier = 'startup' | 'mid' | 'large' | 'bigtech' | 'whatap';
 export const TIER_LABELS: Record<Tier, string> = {
   startup: '스타트업', mid: '중견', large: '대기업', bigtech: '빅테크', whatap: '관측성 전문',
 };
+/** 스타트업 성장 단계. stages[0]은 시작 상태(회사 level·baseSalary와 같음) */
+export type GrowthStage = {
+  name: string;
+  level: number;
+  /** 만원 */
+  baseSalary: number;
+  /** 이 단계에서 규모가 바뀌면 (이후 단계도 이어받는다) */
+  tier?: Tier;
+  /** 이 단계에 새로 생기는 관측 도구 */
+  addCards?: CardId[];
+  /** 연말마다 다음 단계로 갈 확률 / 폐업 확률. 마지막 단계는 둘 다 0 */
+  up: number;
+  down: number;
+  /** 이 단계에 도달했을 때 feed·story 문장. `{company}` 뒤에 조사(이/가 등)를 붙여 쓴다 */
+  text: string;
+  /** 상장 단계 (마지막 단계에만). 상장할 수 있는 회사만 스톡옵션을 준다 */
+  ipo?: true;
+};
+
 export type Company = {
   id: string;
   name: string;
@@ -122,6 +141,8 @@ export type Company = {
   hidden?: boolean;
   /** 작은 회사: 플레이어 OVR이 level + TINY_OUTGROW를 넘으면 이직 제안이 오지 않는다 */
   tiny?: boolean;
+  /** 성장 단계 (스타트업만) */
+  stages?: GrowthStage[];
 };
 
 export type CardDef = { id: CardId; name: string; color: string; views: ViewId[] };
@@ -212,6 +233,10 @@ export type GameState = {
   assets: number;
   /** 상점에서 산 물건 id (산 순서대로, 중복 가능) */
   purchases: string[];
+  /** 회사별 성장 단계 (없으면 0). 다니지 않는 회사는 멈춰 있다 */
+  companyStage: Record<string, number | 'closed'>;
+  /** 지금 회사에서 받은 스톡옵션 (만원, 상장 때 IPO_MULT배로 행사) */
+  stock?: { companyId: string; value: number };
 };
 
 export type Ending = { id: string; priority: number; title: string; description: string; check: (s: GameState) => boolean };

@@ -1,3 +1,4 @@
+import { effectiveCompany } from './company';
 import { withJosa } from './josa';
 import type { Rng } from './rng';
 import { computeTitle, nextTitle, PROMOTION_MIN_RATING, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
@@ -25,7 +26,7 @@ export function ageFactor(age: number, type: GrowthType): number {
 
 /** 해를 넘기며 성장·쇠퇴·번아웃을 계산한다. 평가는 review에서 한다. */
 export function runYear(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[] } {
-  const company = c.companies[s.companyId];
+  const company = effectiveCompany(s.companyId, s, c);
   const before = ovr(s.stats, s.position);
   const role = roleFor(before, company.level);
   const stats = { ...s.stats };
@@ -83,7 +84,7 @@ export function ratingFromPerf(perf: number): number {
 
 /** 연말 평가: 별점, 평판, 연봉, 직급, 히스토리, 은퇴 판정. */
 export function review(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[]; rating: number } {
-  const company = c.companies[s.companyId];
+  const company = effectiveCompany(s.companyId, s, c);
   const o = ovr(s.stats, s.position);
   const role = roleFor(o, company.level);
   const perf = o - company.level + (role === 'owner' ? 3 : 0) + s.yearScore + rng.int(-6, 6);
