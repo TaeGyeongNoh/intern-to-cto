@@ -709,6 +709,13 @@ describe('즉시 은퇴 (해 넘기기 대신 은퇴한다)', () => {
   it('한 해라도 일했으면 해 넘기기 옆에 은퇴가 생긴다', () => {
     expect(validInputs(afterYears(1), CONTENT)).toEqual([{ t: 'pick', i: 0 }, RETIRE]);
   });
+  it('대체복무(산업기능요원·전문연구요원) 중에는 은퇴할 수 없다 (병역 이탈)', () => {
+    const g = afterYears(1);
+    const bound: Game = { ...g, state: { ...g.state, boundUntil: g.state.yearsInCareer + 1 } };
+    expect(validInputs(bound, CONTENT)).toEqual([{ t: 'pick', i: 0 }]);
+    const done: Game = { ...g, state: { ...g.state, boundUntil: g.state.yearsInCareer } };
+    expect(validInputs(done, CONTENT)).toEqual([{ t: 'pick', i: 0 }, RETIRE]);
+  });
   it('은퇴하면 새 해를 돌리지 않고 바로 엔딩으로 간다 (평가·상점·제안 없음)', () => {
     const g = afterYears(3);
     const out = apply(g, RETIRE, CONTENT);
