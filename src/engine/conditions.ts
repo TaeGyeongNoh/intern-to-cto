@@ -19,6 +19,7 @@ export function matches(cond: Condition, s: GameState): boolean {
   if (cond.maxAge !== undefined && s.age > cond.maxAge) return false;
   if (cond.minOvr !== undefined && ovr(s.stats, s.position) < cond.minOvr) return false;
   if (cond.minBurnout !== undefined && s.burnout < cond.minBurnout) return false;
+  if (cond.minYearsAtCompany !== undefined && s.yearsAtCompany < cond.minYearsAtCompany) return false;
   if (cond.track && s.track !== cond.track) return false;
   if (cond.flags && !cond.flags.every((f) => s.flags.includes(f))) return false;
   if (cond.notFlags && cond.notFlags.some((f) => s.flags.includes(f))) return false;

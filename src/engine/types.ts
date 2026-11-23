@@ -32,6 +32,8 @@ export type Condition = {
   maxAge?: number;
   minOvr?: number;
   minBurnout?: number;
+  /** 지금 회사 근속 연수 (1 이상) */
+  minYearsAtCompany?: number;
   track?: Track;
   flags?: string[];
   notFlags?: string[];

@@ -11,6 +11,18 @@ describe('validateContent', () => {
     };
     expect(validateContent(c).join('\n')).toContain('unknown event nope');
   });
+  it('minYearsAtCompany는 1 이상이어야 한다 (이벤트·상점)', () => {
+    const c: Content = {
+      ...CONTENT,
+      events: { x: { id: 'x', when: { minYearsAtCompany: 0 }, text: 'x', choices: [{ label: 'a', effects: {} }] } },
+      shop: { s: { id: 's', name: 's', category: 'rest', price: 10, text: 's', when: { minYearsAtCompany: 0.5 }, effects: {} } },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('event x: minYearsAtCompany must be an integer >= 1');
+    expect(errs).toContain('shop s: minYearsAtCompany must be an integer >= 1');
+    const ok: Content = { ...CONTENT, events: { x: { id: 'x', when: { minYearsAtCompany: 1 }, text: 'x', choices: [{ label: 'a', effects: {} }] } } };
+    expect(validateContent(ok)).toEqual([]);
+  });
   it('requires 없는 선택지가 하나도 없으면 잡는다', () => {
     const c: Content = {
       ...CONTENT,

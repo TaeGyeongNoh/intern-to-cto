@@ -25,6 +25,12 @@ describe('matches', () => {
     expect(matches({ minCareerYear: 4 }, s)).toBe(false);
     expect(matches({ minCalendarYear: 2031 }, s)).toBe(false);
   });
+  it('근속 연수: minYearsAtCompany 이상이면 통과', () => {
+    const t = makeState({ yearsAtCompany: 5 });
+    expect(matches({ minYearsAtCompany: 5 }, t)).toBe(true);
+    expect(matches({ minYearsAtCompany: 6 }, t)).toBe(false);
+    expect(matches({ minYearsAtCompany: 1 }, makeState({ yearsAtCompany: 0 }))).toBe(false);
+  });
   it('플래그', () => {
     expect(matches({ flags: ['a'] }, s)).toBe(true);
     expect(matches({ notFlags: ['a'] }, s)).toBe(false);

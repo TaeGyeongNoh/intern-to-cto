@@ -1,7 +1,7 @@
 import { resolveCompanyId } from './career';
 import { PROLOGUE_START } from './game';
 import { shopFlag } from './shop';
-import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Content, type Effects } from './types';
+import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Condition, type Content, type Effects } from './types';
 
 export function validateContent(c: Content): string[] {
   const errs: string[] = [];
@@ -25,8 +25,14 @@ export function validateContent(c: Content): string[] {
     }
   };
 
+  const checkCondition = (where: string, cond?: Condition) => {
+    const y = cond?.minYearsAtCompany;
+    if (y !== undefined && !(Number.isInteger(y) && y >= 1)) errs.push(`${where}: minYearsAtCompany must be an integer >= 1`);
+  };
+
   for (const [key, ev] of Object.entries(c.events)) {
     if (key !== ev.id) errs.push(`event key ${key} != id ${ev.id}`);
+    checkCondition(`event ${ev.id}`, ev.when);
     if (!ev.choices.some((ch) => !ch.requires)) errs.push(`event ${ev.id}: needs at least one choice without requires`);
     ev.choices.forEach((ch, i) => {
       const where = `event ${ev.id}#${i}`;
@@ -39,6 +45,7 @@ export function validateContent(c: Content): string[] {
   const positions = new Set<string>(POSITION_IDS);
   for (const inc of Object.values(c.incidents)) {
     for (const p of inc.positions ?? []) if (!positions.has(p)) errs.push(`incident ${inc.id}: unknown position ${p}`);
+    checkCondition(`incident ${inc.id}`, inc.when);
     if (inc.actions.length === 0) errs.push(`incident ${inc.id}: no actions`);
     inc.steps.forEach((st, i) => {
       if (!st.options.some((o) => o.correct)) errs.push(`incident ${inc.id} step ${i}: no correct option`);
@@ -67,6 +74,7 @@ export function validateContent(c: Content): string[] {
   for (const [key, item] of Object.entries(c.shop)) {
     const where = `shop ${item.id}`;
     if (key !== item.id) errs.push(`shop key ${key} != id ${item.id}`);
+    checkCondition(where, item.when);
     if (!(item.price > 0)) errs.push(`${where}: price must be positive`);
     checkEffects(where, item.effects);
     if (item.once === false && item.category !== 'invest') errs.push(`${where}: only invest items can be repeatable`);
