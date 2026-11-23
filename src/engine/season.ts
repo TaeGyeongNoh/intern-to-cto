@@ -19,6 +19,17 @@ const AGE_TABLE: Record<GrowthType, [number, number][]> = {
 };
 const AGE_TAIL: Record<GrowthType, number> = { early: 0, normal: 0, late: 0.2 };
 
+/** 기본 출신(4년제)이 커리어를 시작하는 나이 */
+export const CAREER_START_AGE = 22;
+
+/**
+ * 성장 계수에 쓰는 나이: "22세에 시작했다면의 나이"(경력 나이). 신입 몇 년이 가장 빨리 크는 건 나이보다 연차 덕이다
+ * (늦게 온 전향자도 첫해는 신입처럼 배우고, 고졸이 일찍 시작했다고 더 빨리 크지 않는다).
+ * 나이는 쇠퇴(DECLINE_AGE)와 은퇴에서 본다. 22세에 시작한 판은 실제 나이와 같아 이전과 똑같다.
+ * (실제 나이와 반반 섞으면 10년차 연봉이 석사 0.99·전향 0.85로 벌어져, 경력이 쌓일수록 학력 효과가 준다는 현실과 어긋났다)
+ */
+export const growthAge = (s: GameState): number => CAREER_START_AGE + s.yearsInCareer;
+
 export function ageFactor(age: number, type: GrowthType): number {
   for (const [maxAge, f] of AGE_TABLE[type]) if (age <= maxAge) return f;
   return AGE_TAIL[type];
@@ -32,7 +43,7 @@ export function runYear(s: GameState, rng: Rng, c: Content): { state: GameState;
   const stats = { ...s.stats };
 
   const potentialFactor = before >= s.potential ? 0.1 : 1;
-  const points = Math.round((13 + rng.int(0, 6)) * ageFactor(s.age, s.growthType) * ROLE_FACTOR[role] * potentialFactor);
+  const points = Math.round((13 + rng.int(0, 6)) * ageFactor(growthAge(s), s.growthType) * ROLE_FACTOR[role] * potentialFactor);
   const w = POSITION_WEIGHTS[s.position];
   const items = STAT_IDS.map((id) => ({ item: id, weight: w[id] + 0.05 }));
   for (let k = 0; k < points; k++) {

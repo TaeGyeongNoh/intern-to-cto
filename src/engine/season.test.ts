@@ -3,7 +3,7 @@ import { CONTENT } from '../content';
 import { withJosa } from './josa';
 import { createRng } from './rng';
 import { PROMOTION_MIN_RATING } from './roles';
-import { ageFactor, PERF_SKILL_CAP, REPUTATION_BY_RATING, PERF_YEAR_CAP, performance, ratingFromPerf, RETIRE_AGE, review, runYear } from './season';
+import { ageFactor, CAREER_START_AGE, growthAge, PERF_SKILL_CAP, REPUTATION_BY_RATING, PERF_YEAR_CAP, performance, ratingFromPerf, RETIRE_AGE, review, runYear } from './season';
 import { makeState } from './testing';
 
 const total = (s: Record<string, number>) => Object.values(s).reduce((a, b) => a + b, 0);
@@ -14,6 +14,30 @@ describe('ageFactor', () => {
     expect(ageFactor(40, 'normal')).toBe(0);
     expect(ageFactor(23, 'early')).toBe(1.3);
     expect(ageFactor(40, 'late')).toBe(0.2);
+  });
+});
+
+describe('growthAge', () => {
+  it('22세에 시작한 판은 실제 나이 그대로 (옛 기록 호환)', () => {
+    for (const y of [0, 5, 20]) expect(growthAge(makeState({ age: CAREER_START_AGE + y, yearsInCareer: y }))).toBe(CAREER_START_AGE + y);
+  });
+  it('성장 나이는 연차를 따른다: 몇 살에 시작했든 신입은 신입처럼 배운다', () => {
+    expect(growthAge(makeState({ age: 26, yearsInCareer: 0 }))).toBe(22);
+    expect(growthAge(makeState({ age: 25, yearsInCareer: 5 }))).toBe(27);
+  });
+  it('쇠퇴는 실제 나이를 본다: 같은 5년차라도 쇠퇴 나이를 넘긴 쪽이 덜 큰다', () => {
+    for (let seed = 1; seed < 20; seed++) {
+      const young = makeState({ age: 30, yearsInCareer: 5, growthType: 'normal', potential: 95 });
+      const old = { ...young, age: 45 };
+      expect(total(runYear(old, createRng(seed), CONTENT).state.stats)).toBeLessThan(total(runYear(young, createRng(seed), CONTENT).state.stats));
+    }
+  });
+  it('늦게 시작한 신입도 첫해 성장은 신입 수준', () => {
+    const late = makeState({ potential: 95, age: 28, yearsInCareer: 0, growthType: 'normal' });
+    for (let seed = 1; seed < 30; seed++) {
+      const gain = total(runYear(late, createRng(seed), CONTENT).state.stats) - total(late.stats);
+      expect(gain).toBeGreaterThanOrEqual(13);
+    }
   });
 });
 
