@@ -11,6 +11,13 @@ describe('validateContent', () => {
     };
     expect(validateContent(c).join('\n')).toContain('unknown event nope');
   });
+  it('bound는 이벤트 선택지에서만, 1~5 정수', () => {
+    const ev = (bound: number) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects: { bound } }] } } });
+    expect(validateContent(ev(3))).toEqual([]);
+    for (const b of [0, 6, 1.5, -1]) expect(validateContent(ev(b)).join('\n')).toContain('event x#0: bound must be an integer 1-5');
+    const shop = { ...CONTENT, shop: { ...CONTENT.shop, s: { id: 's', name: 's', category: 'rest' as const, price: 10, text: 's', effects: { bound: 2 } } } };
+    expect(validateContent(shop).join('\n')).toContain('shop s: bound is only supported in event choices');
+  });
   it('minYearsAtCompany는 1 이상이어야 한다 (이벤트·상점)', () => {
     const c: Content = {
       ...CONTENT,

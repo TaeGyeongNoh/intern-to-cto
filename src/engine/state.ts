@@ -57,5 +57,6 @@ export function createInitialState(setup: Setup, seed: number, rng: Rng, c: Cont
     assets: 0,
     purchases: [],
     companyStage: {},
+    boundUntil: 0,
   };
 }

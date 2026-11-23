@@ -34,6 +34,13 @@ describe('applyEffects', () => {
   it('성향은 누적', () => {
     expect(applyEffects(applyEffects(s, { traits: { k: 1 } }), { traits: { k: 2 } }).traits.k).toBe(3);
   });
+  it('bound는 지금 연차 + n과 기존 묶임 중 큰 값', () => {
+    expect(makeState().boundUntil).toBe(0);
+    expect(applyEffects(makeState({ yearsInCareer: 0 }), { bound: 3 }).boundUntil).toBe(3);
+    expect(applyEffects(makeState({ yearsInCareer: 2, boundUntil: 3 }), { bound: 2 }).boundUntil).toBe(4);
+    expect(applyEffects(makeState({ yearsInCareer: 0, boundUntil: 5 }), { bound: 3 }).boundUntil).toBe(5);
+    expect(applyEffects(makeState({ boundUntil: 3 }), {}).boundUntil).toBe(3);
+  });
   it('원본을 변경하지 않는다', () => {
     applyEffects(s, { flags: ['z'], addCards: ['db'] });
     expect(s.flags).toEqual([]);

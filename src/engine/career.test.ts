@@ -44,6 +44,32 @@ describe('generateOffers', () => {
   it('창업 중에는 제안이 없다', () => {
     for (let seed = 1; seed < 50; seed++) expect(generateOffers(makeState({ flags: ['founder'] }), createRng(seed), CONTENT)).toEqual([]);
   });
+  it('대체복무로 묶여 있으면 제안도 와탭 스카우트도 없다, 복무가 끝나는 해부터 다시 온다', () => {
+    const strong = makeState().stats;
+    const s = makeState({
+      reputation: 80,
+      stats: { ...strong, impl: 70, design: 70, debug: 70, infra: 70, ai: 70, mental: 70 },
+      traits: { 관측성전도사: 4 },
+      cardsSeen: ['apm', 'db', 'log', 'server', 'gpu', 'k8s', 'browser'],
+    });
+    let free = 0;
+    for (let seed = 1; seed < 60; seed++) {
+      expect(generateOffers({ ...s, yearsInCareer: 2, boundUntil: 3 }, createRng(seed), CONTENT)).toEqual([]);
+      free += generateOffers({ ...s, yearsInCareer: 3, boundUntil: 3 }, createRng(seed), CONTENT).length;
+    }
+    expect(free).toBeGreaterThan(0);
+  });
+  it('묶이지 않은 판은 rng 소비가 그대로다', () => {
+    const r1 = createRng(7);
+    const r2 = createRng(7);
+    generateOffers(makeState({ yearsInCareer: 4 }), r1, CONTENT);
+    generateOffers(makeState({ yearsInCareer: 4, boundUntil: 3 }), r2, CONTENT);
+    expect(r1.getState()).toBe(r2.getState());
+  });
+  it('묶여 있어도 회사가 문을 닫으면(forced) 다른 곳으로 옮겨 복무를 잇는다', () => {
+    const offers = generateOffers(makeState({ yearsInCareer: 1, boundUntil: 3 }), createRng(3), CONTENT, { forced: true });
+    expect(offers.length).toBeGreaterThan(0);
+  });
   it('스카우트는 까다로운 조건 + 확률로만 온다', () => {
     const strong = makeState().stats;
     const s = makeState({

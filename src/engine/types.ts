@@ -64,6 +64,8 @@ export type Effects = {
   company?: string;
   track?: Track;
   retire?: boolean;
+  /** 지금 회사에 n년 묶인다 (대체복무). 그동안 이직 제안을 받지 않는다 (이벤트 선택지에서만) */
+  bound?: number;
   /** 인생 이야기에 남길 문장 */
   story?: string;
 };
@@ -243,6 +245,8 @@ export type GameState = {
   companyStage: Record<string, number | 'closed'>;
   /** 지금 회사에서 받은 스톡옵션 (만원, 상장 때 IPO_MULT배로 행사) */
   stock?: { companyId: string; value: number };
+  /** 대체복무로 묶인 마지막 연차 (경력 연차 기준). yearsInCareer가 이보다 작으면 이직 제안이 없다. 0이면 묶이지 않음 */
+  boundUntil: number;
 };
 
 export type Ending = { id: string; priority: number; title: string; description: string; check: (s: GameState) => boolean };

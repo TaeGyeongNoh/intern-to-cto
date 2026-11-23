@@ -39,6 +39,8 @@ function makeOffer(co: Company, s: GameState, o: number): Offer {
 /** forced: 지금 회사가 문을 닫아 남을 수 없다. 제안이 0건이면 같은 루트에서 한 곳을 채운다 */
 export function generateOffers(s: GameState, rng: Rng, c: Content, opts: { forced?: boolean } = {}): Offer[] {
   if (s.flags.includes('founder')) return [];
+  // 대체복무 중에는 제안이 없다. 회사가 문을 닫으면(forced) 다른 곳으로 옮겨 남은 복무를 잇는다
+  if (s.yearsInCareer < s.boundUntil && !opts.forced) return [];
   const o = ovr(s.stats, s.position);
   const n = rng.weighted([
     { item: 0, weight: 40 - s.reputation / 4 },

@@ -50,6 +50,16 @@ describe('runYear', () => {
 });
 
 describe('review', () => {
+  it('대체복무가 끝나는 해 연말에 feed와 story를 남긴다', () => {
+    const name = CONTENT.companies[makeState().companyId].name;
+    const done = review(makeState({ yearsInCareer: 3, boundUntil: 3, year: 2028 }), createRng(5), CONTENT);
+    expect(done.feed).toContain('복무 완료 · 이제 이직 제안을 받을 수 있다');
+    expect(done.state.record.story).toContain(`2028년 · ${name}에서 대체복무를 마쳤다.`);
+    for (const [y, b] of [[2, 3], [4, 3], [0, 0]]) {
+      const r = review(makeState({ yearsInCareer: y, boundUntil: b }), createRng(5), CONTENT);
+      expect(r.feed.join('\n')).not.toContain('복무 완료');
+    }
+  });
   it('그 해 연봉의 25%를 저축하고 히스토리에 순자산을 남긴다', () => {
     const r = review(makeState({ salary: 8000, assets: 1000 }), createRng(5), CONTENT);
     expect(r.state.assets).toBe(3000);

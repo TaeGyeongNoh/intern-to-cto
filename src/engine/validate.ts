@@ -49,6 +49,10 @@ export function validateContent(c: Content): string[] {
       if (!c.events[id]) errs.push(`${where}: ${key} → unknown event ${id}`);
     }
     if (!inEvent && (e.now || e.company)) errs.push(`${where}: now/company are only supported in event choices`);
+    if (e.bound !== undefined) {
+      if (!inEvent) errs.push(`${where}: bound is only supported in event choices`);
+      else if (!(Number.isInteger(e.bound) && e.bound >= 1 && e.bound <= 5)) errs.push(`${where}: bound must be an integer 1-5`);
+    }
     const toFounder = e.company === FOUNDER_COMPANY;
     if (inEvent && (e.flags ?? []).includes('founder') && !toFounder) errs.push(`${where}: founder flag needs company ${FOUNDER_COMPANY}`);
     if (inEvent && toFounder && !(e.flags ?? []).includes('founder')) errs.push(`${where}: founder company needs founder flag`);

@@ -125,6 +125,10 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
     feed.push(`${withJosa(title, '(으)로')} 발령`);
     story.push(`${s.year}년 · ${company.name}에서 ${withJosa(title, '을/를')} 맡았다.`);
   }
+  if (s.boundUntil > 0 && s.yearsInCareer === s.boundUntil) {
+    feed.push('복무 완료 · 이제 이직 제안을 받을 수 있다');
+    story.push(`${s.year}년 · ${company.name}에서 대체복무를 마쳤다.`);
+  }
   let result: GameState = {
     ...next,
     title,
