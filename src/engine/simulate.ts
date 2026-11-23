@@ -1,6 +1,7 @@
 import { apply, newGame, pending, validInputs, type Game, type Input } from './game';
 import { IPO_MULT } from './company';
 import { actionChance } from './incident';
+import { serviceAllowed } from './origin';
 import { createRng, type Rng } from './rng';
 import { RETIRE_AGE } from './season';
 import { ROUTE_IDS, type Content, type PositionId } from './types';
@@ -33,6 +34,14 @@ export type SimReport = {
   avgPurchases: number;
   /** 시작 유형별 판 수·평균 연차·엔딩 분포 */
   byArchetype: Record<string, { games: number; avgYears: number; endings: Record<string, number> }>;
+  /** 출신 조합별 ('{education}/{service}') 판 수·평균 연차·첫 해 연말 연봉·최고연봉 중앙값·엔딩 분포 */
+  byOrigin: Record<string, { games: number; avgYears: number; firstSalaryMedian: number; maxSalaryMedian: number; endings: Record<string, number> }>;
+  /** 학력별 점검: 시작 나이, 첫 해 연말 연봉, 10년차 연봉, 최고연봉, 상위 엔딩(cto·vp·principal) 비율 */
+  byEducation: Record<string, {
+    games: number; avgYears: number; avgStartAge: number;
+    firstSalaryMedian: number; year10Median: number; maxSalaryMedian: number; topEndingShare: number;
+    endings: Record<string, number>;
+  }>;
   /** 포지션별 판 수·엔딩 분포 */
   byPosition: Record<PositionId, { games: number; endings: Record<string, number> }>;
   /** 판당 비프롤로그 이벤트 수 */
@@ -98,6 +107,8 @@ const isIpo = (s: Game['state'], id: string, c: Content): boolean => {
 };
 
 const POSITIONS: PositionId[] = ['backend', 'frontend', 'sre', 'ai'];
+/** 학력별 점검에서 '상위 엔딩'으로 보는 것 */
+export const TOP_ENDINGS = ['cto', 'vp', 'principal'];
 
 function chooseInput(g: Game, c: Content, player: Rng, policy: SimPolicy): Input {
   const p = pending(g);
@@ -143,11 +154,23 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   const ratings = [0, 0, 0, 0, 0, 0];
   const fd = { games: 0, exits: 0, eligible5: 0, survived5: 0, years: 0, active: 0, salaries: [] as number[], reentry: [] as number[] };
   const isFounderCo = (id: string) => !!c.companies[id]?.founder;
+  const educationIds = Object.keys(c.educations);
+  type OriginAgg = { games: number; years: number; startAge: number; first: number[]; y10: number[]; max: number[]; endings: Record<string, number> };
+  const newAgg = (): OriginAgg => ({ games: 0, years: 0, startAge: 0, first: [], y10: [], max: [], endings: {} });
+  const originAgg = new Map<string, OriginAgg>();
+  const eduAgg = new Map<string, OriginAgg>(educationIds.map((e) => [e, newAgg()]));
 
   for (let k = 0; k < n; k++) {
     const seed = seed0 + k;
     const player = createRng((seed * 7919 + 13) >>> 0);
-    let g = newGame({ name: 'sim', position: player.pick(POSITIONS), route: player.pick(ROUTE_IDS), candidate: player.int(0, 2) }, seed, c);
+    const position = player.pick(POSITIONS);
+    const route = player.pick(ROUTE_IDS);
+    const candidate = player.int(0, 2);
+    // 출신은 실제 비율 대신 고르게 뽑는다 (대체복무가 과대 표집되지만 밸런스 점검에는 이쪽이 낫다)
+    const education = player.pick(educationIds);
+    const service = player.pick(Object.values(c.services).filter((sv) => serviceAllowed(sv, education))).id;
+    let g = newGame({ name: 'sim', position, route, candidate, education, service }, seed, c);
+    const startAge = g.state.age;
     const seen = new Set<string>();
     let preFound = 0;
     const track = (before: Game, after: Game) => {
@@ -234,6 +257,17 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     row.games += 1;
     row.avgYears += y;
     row.endings[id] = (row.endings[id] ?? 0) + 1;
+    for (const [key, map] of [[`${education}/${service}`, originAgg], [education, eduAgg]] as const) {
+      if (!map.has(key)) map.set(key, newAgg());
+      const a = map.get(key)!;
+      a.games += 1;
+      a.years += y;
+      a.startAge += startAge;
+      a.endings[id] = (a.endings[id] ?? 0) + 1;
+      a.max.push(g.state.maxSalary);
+      if (g.state.record.history[0]) a.first.push(g.state.record.history[0].salary);
+      if (row10) a.y10.push(row10.salary);
+    }
     const pos = byPosition[g.state.position];
     pos.games += 1;
     pos.endings[id] = (pos.endings[id] ?? 0) + 1;
@@ -266,6 +300,13 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     houseRate: houses / n,
     avgPurchases: purchases / n,
     byArchetype,
+    byOrigin: Object.fromEntries([...originAgg].map(([key, a]) => [key, { games: a.games, avgYears: a.years / a.games, firstSalaryMedian: quantile(a.first, 0.5), maxSalaryMedian: quantile(a.max, 0.5), endings: a.endings }])),
+    byEducation: Object.fromEntries([...eduAgg].filter(([, a]) => a.games > 0).map(([key, a]) => [key, {
+      games: a.games, avgYears: a.years / a.games, avgStartAge: a.startAge / a.games,
+      firstSalaryMedian: quantile(a.first, 0.5), year10Median: quantile(a.y10, 0.5), maxSalaryMedian: quantile(a.max, 0.5),
+      topEndingShare: TOP_ENDINGS.reduce((sum, e) => sum + (a.endings[e] ?? 0), 0) / a.games,
+      endings: a.endings,
+    }])),
     byPosition,
     avgEvents: events / n,
     repeatShare: events ? repeats / events : 0,

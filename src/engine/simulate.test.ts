@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { simulate } from './simulate';
+import { RETIRE_AGE } from './season';
 
 describe('simulate', () => {
   it('N판을 돌려 엔딩 분포를 낸다', () => {
@@ -8,7 +9,8 @@ describe('simulate', () => {
     expect(r.games).toBe(100);
     expect(Object.values(r.endings).reduce((a, b) => a + b, 0)).toBe(100);
     expect(r.avgYears).toBeGreaterThan(5);
-    expect(r.maxYears).toBeLessThanOrEqual(26);
+    // 가장 이른 시작(고졸 20세)부터 은퇴 나이까지
+    expect(r.maxYears).toBeLessThanOrEqual(RETIRE_AGE - Math.min(...Object.values(CONTENT.educations).map((e) => e.age)));
   });
   it('연봉 분포를 낸다', () => {
     const r = simulate(100, CONTENT);
@@ -90,5 +92,24 @@ describe('simulate', () => {
     expect(f.salaryMedian).toBeGreaterThan(0);
     expect(f.reentryRatio).toBeGreaterThan(0);
     expect(f.activeAtRetire).toBeGreaterThanOrEqual(0);
+  });
+  it('출신을 고루 뽑아 학력·병역 조합별, 학력별로 집계한다', () => {
+    const r = simulate(200, CONTENT);
+    const combos = Object.entries(r.byOrigin);
+    expect(combos.reduce((a, [, x]) => a + x.games, 0)).toBe(200);
+    for (const [key, x] of combos) {
+      const [ed, sv] = key.split('/');
+      expect(CONTENT.educations[ed]).toBeDefined();
+      expect(CONTENT.services[sv].educations ?? [ed]).toContain(ed);
+      expect(Object.values(x.endings).reduce((a, b) => a + b, 0)).toBe(x.games);
+      expect(x.maxSalaryMedian).toBeGreaterThan(0);
+    }
+    expect(Object.keys(r.byEducation).sort()).toEqual(Object.keys(CONTENT.educations).sort());
+    for (const x of Object.values(r.byEducation)) {
+      expect(x.firstSalaryMedian).toBeGreaterThan(0);
+      expect(x.topEndingShare).toBeGreaterThanOrEqual(0);
+      expect(x.topEndingShare).toBeLessThanOrEqual(1);
+    }
+    expect(r.byEducation.highschool.avgStartAge).toBeLessThan(r.byEducation.switcher.avgStartAge);
   });
 });
