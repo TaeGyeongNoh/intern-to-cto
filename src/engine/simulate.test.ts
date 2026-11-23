@@ -57,4 +57,11 @@ describe('simulate', () => {
     const r = simulate(100, CONTENT, 1, 'loyal');
     expect(r.endings['one-company'] ?? 0).toBeGreaterThanOrEqual(1);
   });
+  it('현실성: 나이별 연봉과 연차별 직급 분포를 낸다', () => {
+    const r = simulate(100, CONTENT);
+    expect(r.realism.salaryByAge[30].n).toBeGreaterThan(0);
+    expect(r.realism.salaryByAge[30].p90).toBeGreaterThanOrEqual(r.realism.salaryByAge[30].median);
+    const y5 = Object.values(r.realism.titleByYear[5]).reduce((a, b) => a + b, 0);
+    expect(y5).toBeCloseTo(1);
+  });
 });

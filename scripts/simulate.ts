@@ -39,3 +39,11 @@ for (const p of POSITION_IDS) {
   const legend = p === 'sre' ? ` · legend-sre ${pct((x.endings['legend-sre'] ?? 0) / x.games)}` : '';
   console.log(`  ${p.padEnd(8)} ${String(x.games).padStart(4)}판 · ${top3}${legend}`);
 }
+console.log('현실성: 나이별 연말 연봉 (판 수 · 중앙값 / p90 · 1억 이상 · 2억 이상)');
+for (const [age, x] of Object.entries(r.realism.salaryByAge))
+  console.log(`  ${age}세 ${String(x.n).padStart(5)}판 · ${won(x.median)} / ${won(x.p90)} · ${pct(x.over1eok)} · ${pct(x.over2eok)}`);
+console.log('현실성: 연차별 직급 분포');
+for (const [y, tally] of Object.entries(r.realism.titleByYear)) {
+  const row = Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([t, v]) => `${t} ${pct(v)}`).join(', ');
+  console.log(`  ${y.padStart(2)}년차 ${row}`);
+}

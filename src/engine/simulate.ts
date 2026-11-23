@@ -37,7 +37,17 @@ export type SimReport = {
   avgEvents: number;
   /** 비프롤로그 이벤트 중 같은 판에서 이미 본 id가 다시 뜬 비율 */
   repeatShare: number;
+  /** 현실성 점검: 나이별 연말 연봉, 연차별 직급 분포 */
+  realism: {
+    /** 만원. 그 나이 연말 연봉 (그 나이까지 일한 판만) */
+    salaryByAge: Record<number, { n: number; median: number; p90: number; over1eok: number; over2eok: number }>;
+    /** 커리어 N년차 연말 직급 비율 */
+    titleByYear: Record<number, Record<string, number>>;
+  };
 };
+
+export const REALISM_AGES = [30, 35, 40, 45] as const;
+export const REALISM_YEARS = [3, 5, 8, 10, 15] as const;
 
 const quantile = (xs: number[], q: number): number => {
   if (xs.length === 0) return 0;
@@ -80,6 +90,8 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   const byPosition = Object.fromEntries(POSITIONS.map((p) => [p, { games: 0, endings: {} }])) as SimReport['byPosition'];
   let events = 0;
   let repeats = 0;
+  const byAge = new Map<number, number[]>(REALISM_AGES.map((a) => [a, []]));
+  const byYear = new Map<number, Record<string, number>>(REALISM_YEARS.map((y) => [y, {}]));
 
   for (let k = 0; k < n; k++) {
     const seed = seed0 + k;
@@ -111,6 +123,11 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     years += y;
     maxYears = Math.max(maxYears, y);
     incidents += g.state.record.incidentsTotal;
+    for (const h of g.state.record.history) byAge.get(h.age)?.push(h.salary);
+    for (const [y, tally] of byYear) {
+      const h = g.state.record.history[y - 1];
+      if (h) tally[h.title] = (tally[h.title] ?? 0) + 1;
+    }
     const row10 = g.state.record.history[9];
     if (row10) year10.push(row10.salary);
     maxSalaries.push(g.state.maxSalary);
@@ -128,6 +145,16 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
   for (const row of Object.values(byArchetype)) row.avgYears /= row.games;
 
   const rate = ([ok, total]: number[]) => (total ? ok / total : 0);
+  const share = (xs: number[], f: (x: number) => boolean) => (xs.length ? xs.filter(f).length / xs.length : 0);
+  const realism: SimReport['realism'] = {
+    salaryByAge: Object.fromEntries([...byAge].map(([age, xs]) => [age, {
+      n: xs.length, median: quantile(xs, 0.5), p90: quantile(xs, 0.9), over1eok: share(xs, (x) => x >= 10000), over2eok: share(xs, (x) => x >= 20000),
+    }])),
+    titleByYear: Object.fromEntries([...byYear].map(([y, tally]) => {
+      const total = Object.values(tally).reduce((a, b) => a + b, 0);
+      return [y, Object.fromEntries(Object.entries(tally).map(([k, v]) => [k, v / total]))];
+    })),
+  };
   return {
     games: n,
     endings,
@@ -145,5 +172,6 @@ export function simulate(n: number, c: Content, seed0 = 1, policy: SimPolicy = '
     byPosition,
     avgEvents: events / n,
     repeatShare: events ? repeats / events : 0,
+    realism,
   };
 }
