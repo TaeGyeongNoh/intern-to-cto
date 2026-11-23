@@ -1,6 +1,6 @@
 import { withJosa } from './josa';
 import type { Rng } from './rng';
-import { computeTitle, nextTitle, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
+import { computeTitle, nextTitle, PROMOTION_MIN_RATING, ROLE_FACTOR, ROLE_LABELS, ROLE_LOAD, roleFor } from './roles';
 import { reviewSalary } from './salary';
 import { SAVINGS_RATE } from './shop';
 import { ovr, POSITION_WEIGHTS } from './stats';
@@ -82,14 +82,16 @@ export function ratingFromPerf(perf: number): number {
 }
 
 /** 연말 평가: 별점, 평판, 연봉, 직급, 히스토리, 은퇴 판정. */
-export function review(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[] } {
+export function review(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[]; rating: number } {
   const company = c.companies[s.companyId];
   const o = ovr(s.stats, s.position);
   const role = roleFor(o, company.level);
   const perf = o - company.level + (role === 'owner' ? 3 : 0) + s.yearScore + rng.int(-6, 6);
   const rating = ratingFromPerf(perf);
   const reputation = clamp(s.reputation + (rating - 3) * 3, 0, 100);
-  const { title, kind } = nextTitle(s.title, computeTitle({ ...s, reputation }, o, company.tier));
+  const decided = nextTitle(s.title, computeTitle({ ...s, reputation }, o, company.tier));
+  const held = decided.kind === 'promoted' && rating < PROMOTION_MIN_RATING;
+  const { title, kind } = held ? { title: s.title, kind: undefined } : decided;
   const salary = reviewSalary({ ...s, title }, rating, company);
   const assets = s.assets + Math.round(s.salary * SAVINGS_RATE);
   const next: GameState = { ...s, reputation, salary, maxSalary: Math.max(s.maxSalary, salary), assets };
@@ -97,7 +99,10 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   const eok = (v: number) => Math.floor(v / ASSET_MILESTONE);
   if (eok(assets) > eok(s.assets) && assets > 0) feed.push(`순자산 ${eok(assets)}억 돌파`);
   const story = [...s.record.story];
-  if (kind === 'promoted') {
+  if (held) {
+    feed.push(`승진 보류 · ${decided.title} 조건은 채웠지만 올해 평가가 ${rating}점이다.`);
+    story.push(`${s.year}년 · ${decided.title} 승진이 한 해 보류됐다.`);
+  } else if (kind === 'promoted') {
     feed.push(`${withJosa(title, '(으)로')} 승진!`);
     story.push(`${s.year}년 · ${company.name}에서 ${withJosa(title, '(으)로')} 승진했다.`);
   } else if (kind === 'assigned') {
@@ -114,5 +119,5 @@ export function review(s: GameState, rng: Rng, c: Content): { state: GameState; 
   } else if (s.age >= RETIRE_AGE) {
     result = { ...result, retired: true };
   }
-  return { state: result, feed };
+  return { state: result, feed, rating };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
 import { withJosa } from './josa';
 import { createRng } from './rng';
+import { PROMOTION_MIN_RATING } from './roles';
 import { ageFactor, RETIRE_AGE, review, runYear } from './season';
 import { makeState } from './testing';
 
@@ -104,5 +105,36 @@ describe('review 연봉', () => {
   it('히스토리에 연봉을 남긴다', () => {
     const r = review(makeState(), createRng(5), CONTENT).state;
     expect(r.record.history[0].salary).toBe(r.salary);
+  });
+});
+
+describe('승진 보류', () => {
+  const strong = { impl: 80, design: 80, debug: 80, infra: 80, ai: 80, mental: 80 };
+  /** 원하는 별점이 나오는 시드를 찾아 review를 돌린다 */
+  const reviewWithRating = (s: ReturnType<typeof makeState>, want: (r: number) => boolean) => {
+    for (let seed = 1; seed < 500; seed++) {
+      const r = review(s, createRng(seed), CONTENT);
+      if (want(r.rating)) return r;
+    }
+    throw new Error('no seed');
+  };
+  it('조건을 채웠어도 별점 2 이하면 직급을 올리지 않고 승진 보류를 알린다', () => {
+    const s = makeState({ title: '주니어', yearsInCareer: 15, stats: strong, yearScore: -50 });
+    const r = reviewWithRating(s, (x) => x <= 2);
+    expect(r.state.title).toBe('주니어');
+    expect(r.state.record.history.at(-1)?.title).toBe('주니어');
+    expect(r.feed.join('\n')).toContain('승진 보류');
+    expect(r.feed.join('\n')).not.toContain('승진!');
+  });
+  it('별점 3 이상이면 승진한다', () => {
+    const s = makeState({ title: '주니어', yearsInCareer: 15, stats: strong });
+    const r = reviewWithRating(s, (x) => x >= PROMOTION_MIN_RATING);
+    expect(r.state.title).not.toBe('주니어');
+    expect(r.feed.join('\n')).toContain('승진!');
+  });
+  it('팀장 발령은 별점과 무관하다', () => {
+    const s = makeState({ title: '프린시펄', track: 'mgmt', yearScore: -12 });
+    const r = reviewWithRating(s, (x) => x <= 2);
+    expect(r.state.title).toBe('팀장');
   });
 });
