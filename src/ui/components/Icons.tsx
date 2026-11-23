@@ -35,6 +35,7 @@ import {
   LifeBuoy as LLifeBuoy,
   Link as LLink,
   Lock as LLock,
+  LogOut as LLogOut,
   Megaphone as LMegaphone,
   MessageCircle as LMessageCircle,
   Minus as LMinus,
@@ -128,6 +129,7 @@ export const Landmark = make(LLandmark, 'Landmark');
 export const Link = make(LLink, 'Link');
 export const LifeBuoy = make(LLifeBuoy, 'LifeBuoy');
 export const Lock = make(LLock, 'Lock');
+export const LogOut = make(LLogOut, 'LogOut');
 export const Megaphone = make(LMegaphone, 'Megaphone');
 export const MessageCircle = make(LMessageCircle, 'MessageCircle');
 export const Minus = make(LMinus, 'Minus');

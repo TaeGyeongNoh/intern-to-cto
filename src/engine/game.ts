@@ -36,6 +36,16 @@ export type Pending =
 
 export type Input = { t: 'pick'; i: number } | { t: 'ask' };
 
+/** 해 넘기기 단계의 입력: pick(0) 다음 해로, pick(1) 지금 은퇴한다 (경력 1년차부터) */
+export const RETIRE_INPUT = { t: 'pick', i: 1 } as const satisfies Input;
+/** 은퇴는 프롤로그가 끝나고 한 해라도 일한 뒤에만, 대체복무(boundUntil) 중이 아닐 때만 고를 수 있다 (복무 중 퇴사는 병역 이탈) */
+export const canRetire = (g: Game): boolean =>
+  pending(g).kind === 'year' && g.state.yearsInCareer >= 1 && g.state.yearsInCareer >= g.state.boundUntil;
+/** 은퇴를 뺀 유효 입력. 끝까지 커리어를 이어 가는 플레이어(시뮬레이터·무작위 테스트)용 */
+export function careerInputs(g: Game, c: Content): Input[] {
+  return validInputs(g, c).filter((v) => !(pending(g).kind === 'year' && sameInput(v, RETIRE_INPUT)));
+}
+
 export type Game = {
   setup: Setup;
   seed: number;
@@ -87,7 +97,7 @@ export function validInputs(g: Game, c: Content): Input[] {
   const s = g.state;
   switch (p.kind) {
     case 'year':
-      return [pick(0)];
+      return canRetire(g) ? [pick(0), RETIRE_INPUT] : [pick(0)];
     case 'event':
       return c.events[p.eventId].choices.flatMap((ch, i) => (choiceLocked(ch, s) ? [] : [pick(i)]));
     case 'incident-step': {
@@ -130,6 +140,14 @@ export function apply(g: Game, input: Input, c: Content): Game {
 
   switch (p.kind) {
     case 'year': {
+      if (indexOf(input) === 1) {
+        // 새 해를 돌리지 않는다 (rng도 쓰지 않는다). 엔딩은 drain이 지금 상태로 정한다
+        const co = c.companies[s.companyId].name;
+        s = applyEffects(s, { retire: true, flags: ['retired-voluntary'], story: `${withJosa(co, '을/를')} 끝으로 스스로 은퇴했다.` });
+        feed.push('은퇴를 결심했다. 사원증을 반납한다.');
+        result = { title: '은퇴한다', detail: `${s.age}세, ${s.yearsInCareer}년 차에 스스로 내려놓았다.` };
+        break;
+      }
       if (s.yearsInCareer === 0) {
         // 첫 회사가 프롤로그로 정해진 뒤 출신 가감을 더한다. 프롤로그 중 연봉 변화는 경력 전이므로 최고 연봉 기록은 첫 연봉부터 센다
         const salary = firstSalary(s.salary, resolveOrigin(g.setup, c));

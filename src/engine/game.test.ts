@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { apply, NEGOTIATE_CHOICES, NEGOTIATE_MIN_YEARS_AT_COMPANY, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
+import { apply, careerInputs, NEGOTIATE_CHOICES, NEGOTIATE_MIN_YEARS_AT_COMPANY, newGame, pending, replay, validInputs, type Game, type Setup } from './game';
 import { STOCK_GRANT_MULT } from './company';
 import { marketSalary, NEGOTIATE_BONUS, NEGOTIATE_CAP, NEGOTIATE_FAIL_RAISE, negotiateChance, RAISE_BY_RATING } from './salary';
 import { createRng } from './rng';
@@ -18,7 +18,8 @@ function playRandom(seed: number, s: Setup = setup): Game {
   const r = createRng(seed + 999);
   for (let guard = 0; pending(g).kind !== 'ended'; guard++) {
     if (guard > 3000) throw new Error('game did not end');
-    g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+    // 끝까지 일하는 커리어를 본다 (스스로 은퇴하지 않는다)
+    g = apply(g, r.pick(careerInputs(g, CONTENT)), CONTENT);
   }
   return g;
 }
@@ -432,7 +433,7 @@ describe('시장 분위기', () => {
       const r = createRng(seed + 5);
       for (let guard = 0; pending(g).kind !== 'ended' && guard < 3000; guard++) {
         if (pending(g).kind === 'shop') seen.add(g.state.market);
-        g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+        g = apply(g, r.pick(careerInputs(g, CONTENT)), CONTENT);
       }
     }
     expect(seen).toEqual(new Set(['bull', 'flat', 'bear']));
@@ -683,5 +684,66 @@ describe('창업 회사', () => {
   it('같은 입력이면 같은 결과 (결정론)', () => {
     const c = founderContent(0.3, 0.3);
     expect(apply(atFounding(5), { t: 'pick', i: 0 }, c)).toEqual(apply(atFounding(5), { t: 'pick', i: 0 }, c));
+  });
+});
+
+describe('즉시 은퇴 (해 넘기기 대신 은퇴한다)', () => {
+  const RETIRE = { t: 'pick', i: 1 } as const;
+  /** 프롤로그를 끝내고 n년을 보낸 뒤 다음 해 넘기기 앞에서 멈춘다 (이직 제안은 남고, 나머지는 첫 선택지) */
+  const afterYears = (n: number, seed = 3): Game => {
+    let g = skipPrologue(newGame(setup, seed, CONTENT));
+    for (let y = 0; y < n; y++) {
+      g = apply(g, { t: 'pick', i: 0 }, CONTENT);
+      for (let guard = 0; pending(g).kind !== 'year'; guard++) {
+        if (guard > 50 || pending(g).kind === 'ended') throw new Error('year did not finish');
+        const valid = validInputs(g, CONTENT);
+        g = apply(g, pending(g).kind === 'offers' ? valid.at(-1)! : valid[0], CONTENT);
+      }
+    }
+    return g;
+  };
+
+  it('첫 해(경력 0년차)에는 은퇴할 수 없다', () => {
+    expect(validInputs(afterYears(0), CONTENT)).toEqual([{ t: 'pick', i: 0 }]);
+  });
+  it('한 해라도 일했으면 해 넘기기 옆에 은퇴가 생긴다', () => {
+    expect(validInputs(afterYears(1), CONTENT)).toEqual([{ t: 'pick', i: 0 }, RETIRE]);
+  });
+  it('대체복무(산업기능요원·전문연구요원) 중에는 은퇴할 수 없다 (병역 이탈)', () => {
+    const g = afterYears(1);
+    const bound: Game = { ...g, state: { ...g.state, boundUntil: g.state.yearsInCareer + 1 } };
+    expect(validInputs(bound, CONTENT)).toEqual([{ t: 'pick', i: 0 }]);
+    const done: Game = { ...g, state: { ...g.state, boundUntil: g.state.yearsInCareer } };
+    expect(validInputs(done, CONTENT)).toEqual([{ t: 'pick', i: 0 }, RETIRE]);
+  });
+  it('은퇴하면 새 해를 돌리지 않고 바로 엔딩으로 간다 (평가·상점·제안 없음)', () => {
+    const g = afterYears(3);
+    const out = apply(g, RETIRE, CONTENT);
+    expect(pending(out).kind).toBe('ended');
+    expect(out.state.retired).toBe(true);
+    expect(out.state.flags).toContain('retired-voluntary');
+    expect(out.state.year).toBe(g.state.year);
+    expect(out.state.age).toBe(g.state.age);
+    expect(out.state.yearsInCareer).toBe(g.state.yearsInCareer);
+    expect(out.state.record.history).toEqual(g.state.record.history);
+    expect(out.state.salary).toBe(g.state.salary);
+    expect(out.state.assets).toBe(g.state.assets);
+    expect(out.rngState).toBe(g.rngState);
+    expect(out.state.endingId).toBeDefined();
+    expect(out.state.record.story.at(-1)).toContain(`${g.state.year}년 ·`);
+    expect(out.state.record.story.at(-1)).toContain('은퇴');
+    expect(out.feed.some((l) => l.startsWith('엔딩 · '))).toBe(true);
+    expect(validInputs(out, CONTENT)).toEqual([]);
+  });
+  it('짧은 커리어의 자발적 은퇴는 원컴퍼니맨이 아니라 다른 길', () => {
+    const out = apply(afterYears(2), RETIRE, CONTENT);
+    expect(out.state.companiesWorked).toHaveLength(1);
+    expect(out.state.endingId).toBe('new-path');
+  });
+  it('리플레이해도 같은 결과', () => {
+    const out = apply(afterYears(4), RETIRE, CONTENT);
+    const again = replay(setup, out.seed, out.log, CONTENT);
+    expect(again.state).toEqual(out.state);
+    expect(again.rngState).toBe(out.rngState);
   });
 });

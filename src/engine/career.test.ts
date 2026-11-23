@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content';
-import { LEGEND_FAST } from '../content/endings';
+import { FIRE_ASSETS, LEGEND_FAST, ONE_COMPANY_MIN_YEARS } from '../content/endings';
 import { determineEnding, generateOffers, joinCompany, scoutEligible } from './career';
 import { createRng } from './rng';
 import { marketSalary } from './salary';
@@ -125,9 +125,32 @@ describe('determineEnding', () => {
     expect(determineEnding(makeState({ flags: ['founder', 'whatap-joined'] }), CONTENT).id).toBe('whatap');
     expect(determineEnding(makeState({ flags: ['founder', 'exit'] }), CONTENT).id).toBe('founder-exit');
   });
-  it('기본값: 한 회사면 원컴퍼니맨, 아니면 평범한 행복', () => {
-    expect(determineEnding(makeState(), CONTENT).id).toBe('one-company');
-    expect(determineEnding(makeState({ companiesWorked: ['a', 'b'] }), CONTENT).id).toBe('ordinary');
+  it('기본값: 한 회사에서 오래 일했으면 원컴퍼니맨, 아니면 평범한 행복', () => {
+    expect(determineEnding(makeState({ yearsInCareer: ONE_COMPANY_MIN_YEARS }), CONTENT).id).toBe('one-company');
+    expect(determineEnding(makeState({ companiesWorked: ['a', 'b'], yearsInCareer: 25 }), CONTENT).id).toBe('ordinary');
+  });
+  it('원컴퍼니맨은 오래 다녀야 한다: 첫 회사에서 일찍 그만두면 아니다', () => {
+    expect(determineEnding(makeState({ yearsInCareer: ONE_COMPANY_MIN_YEARS - 1 }), CONTENT).id).toBe('ordinary');
+  });
+  describe('자발적 은퇴: 파이어족·다른 길', () => {
+    const vol = (over: Partial<Parameters<typeof makeState>[0]> = {}) =>
+      determineEnding(makeState({ companiesWorked: ['a', 'b'], retired: true, flags: ['retired-voluntary'], ...over }), CONTENT).id;
+    it('순자산이 FIRE_ASSETS 이상이면 파이어족', () => {
+      expect(vol({ assets: FIRE_ASSETS })).toBe('fire');
+      expect(vol({ assets: FIRE_ASSETS - 1 })).toBe('new-path');
+    });
+    it('자산이 많아도 스스로 그만둔 게 아니면 파이어족이 아니다', () => {
+      expect(determineEnding(makeState({ companiesWorked: ['a', 'b'], assets: FIRE_ASSETS * 2 }), CONTENT).id).toBe('ordinary');
+    });
+    it('흔한 끝 엔딩보다 파이어족이 우선, 프레스티지 엔딩보다는 아래', () => {
+      expect(vol({ assets: FIRE_ASSETS, title: '스태프' })).toBe('fire');
+      expect(vol({ assets: FIRE_ASSETS, title: 'CTO' })).toBe('cto');
+      expect(vol({ assets: FIRE_ASSETS, companiesWorked: ['a'], yearsInCareer: ONE_COMPANY_MIN_YEARS })).toBe('one-company');
+    });
+    it('다른 길은 아무것에도 안 맞을 때만: 시니어 근속이 길면 터줏대감', () => {
+      expect(vol({ title: '시니어', yearsAtCompany: 5 })).toBe('veteran-senior');
+      expect(vol()).toBe('new-path');
+    });
   });
   describe('흔한 커리어 끝: 스태프·팀장·오래 다닌 시니어', () => {
     const at = (title: string, yearsAtCompany: number, extra: Partial<Parameters<typeof makeState>[0]> = {}) =>
@@ -146,7 +169,7 @@ describe('determineEnding', () => {
     });
     it('창업 실패·원컴퍼니맨·키노트가 더 우선한다', () => {
       expect(at('스태프', 5, { flags: ['founder-failed'] })).toBe('founder-fail');
-      expect(at('팀장', 5, { companiesWorked: ['a'] })).toBe('one-company');
+      expect(at('팀장', 5, { companiesWorked: ['a'], yearsInCareer: ONE_COMPANY_MIN_YEARS })).toBe('one-company');
       expect(at('시니어', 5, { traits: { keynote: 2 } })).toBe('keynote');
     });
   });
