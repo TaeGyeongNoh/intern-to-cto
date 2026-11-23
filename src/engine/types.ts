@@ -11,7 +11,7 @@ export const ROUTE_IDS = ['commerce', 'finance', 'ai-startup'] as const;
 export type RouteId = (typeof ROUTE_IDS)[number];
 export type CompanyRoute = RouteId | 'whatap';
 export const ROUTE_LABELS: Record<CompanyRoute, string> = {
-  commerce: '커머스', finance: '금융·공공', 'ai-startup': 'AI 스타트업', whatap: '와탭',
+  commerce: '커머스', finance: '금융·공공', 'ai-startup': 'AI', whatap: '와탭',
 };
 
 export type CardId = 'apm' | 'server' | 'k8s' | 'db' | 'log' | 'browser' | 'gpu' | 'ai-agent-obs' | 'whatap-ai';
