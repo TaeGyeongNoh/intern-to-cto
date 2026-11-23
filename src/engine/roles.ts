@@ -1,13 +1,22 @@
 import { ovr } from './stats';
 import { TIER_LABELS, type GameState, type Role, type Tier, type Track } from './types';
 
-export const ROLE_LABELS: Record<Role, string> = { owner: '오너', main: '메인', support: '서포트' };
+/** '오너'는 회사 주인처럼 읽혀서 '핵심 담당'으로 쓴다 */
+export const ROLE_LABELS: Record<Role, string> = { owner: '핵심 담당', main: '메인', support: '서포트' };
 export const ROLE_FACTOR: Record<Role, number> = { owner: 1.3, main: 1.0, support: 0.6 };
 export const ROLE_LOAD: Record<Role, number> = { owner: 8, main: 5, support: 2 };
 
-export function roleFor(ovrValue: number, companyLevel: number): Role {
+/**
+ * 핵심 담당(한 영역을 책임지는 사람)이 되는 최소 연차.
+ * 신입은 작은 회사에서 실력이 넘쳐도 혼자 영역을 책임지기보다 메인 개발자로 일한다.
+ * 3년차는 이 게임에서 미드레벨이 되는 연차(roles 직급표)와 같다.
+ */
+export const OWNER_MIN_YEARS = 3;
+
+export function roleFor(ovrValue: number, companyLevel: number, yearsInCareer: number): Role {
   const d = ovrValue - companyLevel;
-  if (d >= 5) return 'owner';
+  if (d >= 5 && yearsInCareer >= OWNER_MIN_YEARS) return 'owner';
+  if (d >= 5) return 'main';
   if (d >= -5) return 'main';
   return 'support';
 }

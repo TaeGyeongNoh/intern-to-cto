@@ -162,7 +162,10 @@ export function apply(g: Game, input: Input, c: Content): Game {
       s = applyEffects(s, eff);
       if (eff.now) front = [{ kind: 'event', eventId: eff.now }];
       result = chance === undefined ? { title: ch.label } : { title: ch.label, ok };
+      if (eff.story) result = { ...result, detail: eff.story };
       feed.push(chance === undefined ? ch.label : `${ch.label} — ${ok ? '성공' : '실패'}`);
+      // "실패"만 보이면 무슨 일이 났는지 모른다: 결과 문장도 피드에 남긴다
+      if (eff.story) feed.push(eff.story);
       break;
     }
     case 'incident-step': {

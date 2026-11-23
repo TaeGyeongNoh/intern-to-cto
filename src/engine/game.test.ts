@@ -322,6 +322,17 @@ describe('이벤트 흐름', () => {
     expect(g.state.scheduled.map((x) => x.id)).toEqual(['ai-chatbot-3a']);
     expect(g.state.traits['관측성전도사']).toBe(1);
   });
+  it('결과 문장(story)이 있으면 피드와 결과 카드에도 보인다', () => {
+    const tryIt: GameEvent = {
+      id: 'try-it', when: {}, scheduledOnly: true, text: 't',
+      choices: [{ label: '큰 곳에 지원한다', chance: { base: 0 }, effects: { story: '붙었다.' }, failEffects: { story: '결국 작은 곳에 자리를 얻었다.' } }],
+    };
+    const c: Content = { ...CONTENT, events: { ...CONTENT.events, 'try-it': tryIt } };
+    const g: Game = { setup, seed: 1, rngState: 1, state: makeState(), queue: [{ kind: 'event', eventId: 'try-it' }, { kind: 'year' }], log: [], feed: [] };
+    const r = apply(g, { t: 'pick', i: 0 }, c);
+    expect(r.feed).toEqual(['큰 곳에 지원한다 — 실패', '결국 작은 곳에 자리를 얻었다.']);
+    expect(r.outcome?.detail).toBe('결국 작은 곳에 자리를 얻었다.');
+  });
 });
 
 describe('이벤트로 은퇴', () => {
