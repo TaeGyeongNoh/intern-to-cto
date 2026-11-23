@@ -32,3 +32,10 @@
 .skip { display: grid; justify-items: center; gap: 6px; margin-top: 4px; }
 .skip button { width: 100%; height: 44px; background: var(--surface); }
 .skipNote { font-size: 12px; color: var(--text-2); }
+
+.status { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 12px; }
+.statusChip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--text-2); background: var(--bg); font-variant-numeric: tabular-nums; }
+.statusChip[data-hot='true'] { color: var(--critical); background: color-mix(in srgb, var(--critical) 10%, transparent); }
+.owned { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 12px; }
+.ownedLabel { font-size: 12px; font-weight: 700; color: var(--text-2); margin-right: 4px; }
+.ownedChip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--primary); background: var(--primary-weak); }

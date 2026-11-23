@@ -1,12 +1,13 @@
 import { CONTENT } from '../../content';
 import { validInputs, type Game, type Input } from '../../engine/game';
-import { SHOP_CATEGORY_LABELS, STAT_IDS, STAT_LABELS, type ShopCategory, type ShopItem } from '../../engine/types';
+import { SHOP_CATEGORY_LABELS, STAT_IDS, STAT_LABELS, type GameState, type ShopCategory, type ShopItem } from '../../engine/types';
 import { Button } from '../components/Icon';
 import {
   Coins, GraduationCap, IconText, KeyRound, Keyboard, PiggyBank, ShoppingCart, Store, TreePalm, Wallet,
   type IconType,
 } from '../components/Icons';
 import { iGa, pct, won } from './format';
+import { OwnedItems } from './OwnedItems';
 import c from './common.module.css';
 import s from './ShopScreen.module.css';
 
@@ -17,16 +18,16 @@ const CATEGORY_ICON: Record<ShopCategory, IconType> = {
 type Effect = { text: string; good: boolean };
 
 /** 물건 효과를 짧은 칩 문구로 (번아웃은 줄어야 좋다) */
-function effectChips(item: ShopItem): Effect[] {
+function effectChips(item: ShopItem, st: GameState): Effect[] {
   const e = item.effects;
+  const after = (cur: number, v: number, min: number, max: number) => Math.max(min, Math.min(max, cur + v));
   const out: Effect[] = [];
-  const sign = (v: number) => (v > 0 ? `+${v}` : `−${Math.abs(v)}`);
   for (const id of STAT_IDS) {
     const v = e.stats?.[id];
-    if (v) out.push({ text: `${STAT_LABELS[id]} ${sign(v)}`, good: v > 0 });
+    if (v) out.push({ text: `${STAT_LABELS[id]} ${st.stats[id]} → ${after(st.stats[id], v, 1, 99)}`, good: v > 0 });
   }
-  if (e.reputation) out.push({ text: `평판 ${sign(e.reputation)}`, good: e.reputation > 0 });
-  if (e.burnout) out.push({ text: `번아웃 ${sign(e.burnout)}`, good: e.burnout < 0 });
+  if (e.reputation) out.push({ text: `평판 ${st.reputation} → ${after(st.reputation, e.reputation, 0, 100)}`, good: e.reputation > 0 });
+  if (e.burnout) out.push({ text: `번아웃 ${st.burnout} → ${after(st.burnout, e.burnout, 0, 100)}`, good: e.burnout < 0 });
   if (item.gamble) {
     const g = item.gamble;
     out.push({ text: `${pct(g.chance)} 확률로 ×${g.win}`, good: true });
@@ -46,11 +47,15 @@ export function ShopScreen({ game, items, onInput }: { game: Game; items: string
         <IconText icon={Store} tone="inherit" size={14} className={s.kicker}>{st.year}년 연말 · 보너스 시즌</IconText>
         <h1 className={s.title}>통장에 {money}{iGa(money)} 모였다</h1>
         <p className={s.sub}>하나 사거나, 그냥 모아 두거나. 한 해에 하나만 살 수 있다.</p>
+        <div className={s.status}>
+          <span className={s.statusChip} data-hot={st.burnout >= 70}>{`번아웃 ${st.burnout}`}</span>
+          {STAT_IDS.map((id) => <span key={id} className={s.statusChip}>{`${STAT_LABELS[id]} ${st.stats[id]}`}</span>)}
+        </div>
       </header>
 
       <main className={`${c.page} ${s.list}`}>
         {items.map((id, i) => (
-          <ItemCard key={id} item={CONTENT.shop[id]} assets={st.assets} disabled={!valid.has(i)} onBuy={() => onInput({ t: 'pick', i })} />
+          <ItemCard key={id} item={CONTENT.shop[id]} st={st} disabled={!valid.has(i)} onBuy={() => onInput({ t: 'pick', i })} />
         ))}
 
         <div className={s.skip}>
@@ -59,14 +64,15 @@ export function ShopScreen({ game, items, onInput }: { game: Game; items: string
           </Button>
           <span className={s.skipNote}>모아 둔 돈은 엔딩 카드의 순자산이 된다</span>
         </div>
+        <OwnedItems state={st} />
       </main>
     </div>
   );
 }
 
-function ItemCard({ item, assets, disabled, onBuy }: { item: ShopItem; assets: number; disabled: boolean; onBuy: () => void }) {
+function ItemCard({ item, st, disabled, onBuy }: { item: ShopItem; st: GameState; disabled: boolean; onBuy: () => void }) {
   const Icon = CATEGORY_ICON[item.category];
-  const chips = effectChips(item);
+  const chips = effectChips(item, st);
   return (
     <article className={s.card} data-category={item.category}>
       <div className={s.top}>
@@ -84,7 +90,7 @@ function ItemCard({ item, assets, disabled, onBuy }: { item: ShopItem; assets: n
         </div>
       )}
       <div className={s.cta}>
-        <span className={s.after}>사고 나면 {won(assets - item.price)}</span>
+        <span className={s.after}>사고 나면 {won(st.assets - item.price)}</span>
         <Button disabled={disabled} onClick={onBuy}><ShoppingCart size={16} />산다</Button>
       </div>
     </article>

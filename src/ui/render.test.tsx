@@ -77,3 +77,18 @@ describe('결과 카드', () => {
     expect(renderToString(<ResultCard outcome={{ title: '덮는다', deltas: [] }} onClose={() => {}} />)).toContain('눈에 띄는 변화는 없다');
   });
 });
+
+describe('상점 정보', () => {
+  it('현재 번아웃과 적용 후 값, 보유 물건이 보인다', async () => {
+    const { ShopScreen } = await import('./screens/ShopScreen');
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '쇼핑', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    const game = { ...g, state: makeState({ assets: 5000, burnout: 62, purchases: ['keyboard', 'coin'] }), queue: [{ kind: 'shop' as const, items: ['chair'] }] };
+    const html = renderToString(<ShopScreen game={game} items={['chair']} onInput={() => {}} />);
+    expect(html).toContain('번아웃 62');
+    expect(html).toContain('62 → 58');
+    expect(html).toContain('보유');
+    expect(html).toContain(CONTENT.shop.keyboard.name);
+    expect(html).not.toContain(`>${CONTENT.shop.coin.name}<`);
+  });
+});

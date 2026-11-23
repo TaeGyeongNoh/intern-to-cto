@@ -9,6 +9,7 @@ import { Button, Chip, StatBar } from '../components/Icon';
 import { ArrowDown, ArrowUp, ChevronRight, EyeOff, Flame, IconText, PiggyBank, Wallet } from '../components/Icons';
 import { feedIcon, TIER_LABELS, won } from './format';
 import { AVATARS } from '../art';
+import { OwnedItems } from './OwnedItems';
 import { Pill, RouteBadge } from './RouteBadge';
 import c from './common.module.css';
 import s from './HomeScreen.module.css';
@@ -108,6 +109,7 @@ export function HomeScreen({ game, log, onInput }: { game: Game; log: string[]; 
             {ALL_CARDS.map((id) => <Chip key={id} id={id} dim={!st.deck.includes(id)} />)}
           </div>
           <p className={s.quip}>{deckQuip(st.deck)}</p>
+          <OwnedItems state={st} />
         </section>
 
         {/* 기록 타임라인 */}
