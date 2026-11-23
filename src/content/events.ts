@@ -306,7 +306,7 @@ const TENURE: GameEvent[] = [
     weight: 2,
     text: '같은 회사, 다른 팀. 사내 이동 공고가 떴다. 옆 팀 리드가 커피를 사 주며 은근히 묻는다. "요즘 좀 지쳐 보이던데?"',
     choices: [
-      { label: '새 팀으로 옮긴다', effects: { burnout: -15, reputation: -1, stats: { design: 1, impl: 1 }, story: '이직 대신 사내 이동을 택했다. 사원증은 그대로, 슬랙 채널은 전부 새로.' } },
+      { label: '새 팀으로 옮긴다', effects: { burnout: -25, reputation: -1, stats: { design: 1, impl: 1 }, story: '이직 대신 사내 이동을 택했다. 사원증은 그대로, 슬랙 채널은 전부 새로.' } },
       { label: '정든 팀에 남는다', effects: {} },
     ],
   },
