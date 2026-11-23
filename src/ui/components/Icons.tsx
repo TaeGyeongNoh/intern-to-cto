@@ -49,6 +49,7 @@ import {
   ShoppingCart as LShoppingCart,
   Siren as LSiren,
   Sparkles as LSparkles,
+  TrendingDown as LTrendingDown,
   TrendingUp as LTrendingUp,
   TriangleAlert as LTriangleAlert,
   UserRoundX as LUserRoundX,
@@ -141,6 +142,7 @@ export const ServerCog = make(LServerCog, 'ServerCog');
 export const ShoppingCart = make(LShoppingCart, 'ShoppingCart');
 export const Siren = make(LSiren, 'Siren');
 export const Sparkles = make(LSparkles, 'Sparkles');
+export const TrendingDown = make(LTrendingDown, 'TrendingDown');
 export const TrendingUp = make(LTrendingUp, 'TrendingUp');
 export const TriangleAlert = make(LTriangleAlert, 'TriangleAlert');
 export const UserRoundX = make(LUserRoundX, 'UserRoundX');

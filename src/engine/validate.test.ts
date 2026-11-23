@@ -109,7 +109,7 @@ describe('validateContent', () => {
       shop: {
         a: { id: 'a', name: 'a', category: 'gear', price: 0, text: 'a', effects: { now: 'x' } },
         b: { id: 'b', name: 'b', category: 'life', price: 10, text: 'b', when: { flags: ['shop:nope'] }, effects: {} },
-        c: { id: 'c', name: 'c', category: 'invest', price: 10, text: 'c', effects: {}, gamble: { chance: 1.5, win: 2, lose: 0 } },
+        c: { id: 'c', name: 'c', category: 'invest', price: 100, once: false, text: 'c', effects: {}, gamble: { chance: { bull: 1.5, flat: 0.5, bear: 0.5 }, win: 2, lose: 0 } },
       },
     };
     const errs = validateContent(c).join('\n');
@@ -117,6 +117,44 @@ describe('validateContent', () => {
     expect(errs).toContain('shop a: now/company are only supported in event choices');
     expect(errs).toContain('shop b: unknown shop flag shop:nope');
     expect(errs).toContain('shop c: invalid gamble');
+  });
+  it('투자 물건: gamble 짝, 배수, 최소 투자금, 반복 구매, 결과 문구를 잡는다', () => {
+    const g = { chance: { bull: 0.5, flat: 0.5, bear: 0.5 }, win: 2, lose: 0.5 };
+    const c: Content = {
+      ...CONTENT,
+      shop: {
+        a: { id: 'a', name: 'a', category: 'invest', price: 100, once: false, text: 'a', effects: {} },
+        b: { id: 'b', name: 'b', category: 'gear', price: 100, text: 'b', effects: {}, gamble: g },
+        d: { id: 'd', name: 'd', category: 'invest', price: 100, once: false, text: 'd', effects: {}, gamble: { ...g, win: 1 } },
+        e: { id: 'e', name: 'e', category: 'invest', price: 50, text: 'e', effects: {}, gamble: g },
+      },
+      market: { ...CONTENT.market, lines: { d: { win: ['x'], lose: [] } } },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('shop a: invest items need gamble');
+    expect(errs).toContain('shop b: only invest items can gamble');
+    expect(errs).toContain('shop d: invalid gamble');
+    expect(errs).toContain('shop e: invest price must be >= 100');
+    expect(errs).toContain('shop e: invest items must be repeatable (once: false)');
+    expect(errs).toContain('shop e: missing market lines');
+    expect(errs).toContain('shop d: market lines need win and lose');
+  });
+  it('시장: 전이표 합, 헤드라인, 단계 이름을 잡는다', () => {
+    const c: Content = {
+      ...CONTENT,
+      market: {
+        ...CONTENT.market,
+        transitions: { ...CONTENT.market.transitions, bull: { bull: 0.5, flat: 0.3, bear: 0.3 } },
+        headlines: { ...CONTENT.market.headlines, bear: [] },
+        stakeLabels: ['a', 'b'],
+        allInLose: [],
+      },
+    };
+    const errs = validateContent(c).join('\n');
+    expect(errs).toContain('market transitions bull: weights must be >= 0 and sum to 1');
+    expect(errs).toContain('market headlines bear: needs at least one');
+    expect(errs).toContain('market stakeLabels: needs one non-empty label per stake tier');
+    expect(errs).toContain('market allInLose: needs at least one');
   });
   it('유형: 강점·약점 스탯, 겹침, 포지션당 3개 미만을 잡는다', () => {
     const c: Content = {

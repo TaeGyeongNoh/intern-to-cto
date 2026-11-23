@@ -39,3 +39,19 @@
 .owned { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 12px; }
 .ownedLabel { font-size: 12px; font-weight: 700; color: var(--text-2); margin-right: 4px; }
 .ownedChip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--primary); background: var(--primary-weak); }
+
+.market { --tone: var(--text-2); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 16px; background: color-mix(in srgb, var(--tone) 8%, var(--surface)); border-bottom: 1px solid var(--border); }
+.market[data-mood='bull'] { --tone: var(--good); }
+.market[data-mood='bear'] { --tone: var(--critical); }
+.marketMood { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--tone); flex: none; }
+.marketText { flex: 1 1 200px; min-width: 0; font-size: 12px; color: var(--text-2); line-height: 1.45; word-break: keep-all; }
+
+.section { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.minStake { flex: none; font-size: 12px; font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.stakes { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.stake { display: grid; gap: 2px; min-width: 0; padding: 8px 6px; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--surface); color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.stake:hover:not(:disabled) { border-color: var(--accent); }
+.stake:disabled { opacity: .45; cursor: default; }
+.stakeHead { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stakeRange { font-size: 10px; color: var(--text-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

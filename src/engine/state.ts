@@ -58,6 +58,8 @@ export function createInitialState(setup: Setup, seed: number, rng: Rng, c: Cont
     assets: 0,
     purchases: [],
     companyStage: {},
+    market: 'flat',
+    investNet: 0,
     boundUntil: 0,
   };
 }

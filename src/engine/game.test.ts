@@ -7,6 +7,7 @@ import { createRng } from './rng';
 import { FAST_MTTR } from './incident';
 import { RETIRE_AGE } from './season';
 import { makeState } from './testing';
+import { ALL_IN_BURNOUT, shopChoices } from './shop';
 import { MIN_FIRST_SALARY } from './origin';
 import type { Content, GameEvent } from './types';
 
@@ -353,8 +354,32 @@ describe('상점', () => {
     expect(p.kind).toBe('shop');
     if (p.kind !== 'shop') return;
     expect(p.items.length).toBeGreaterThan(0);
-    expect(p.items.length).toBeLessThanOrEqual(3);
-    expect(validInputs(g, c)).toHaveLength(p.items.length + 1);
+    expect(p.items.filter((id) => c.shop[id].category !== 'invest').length).toBeLessThanOrEqual(3);
+    expect(validInputs(g, c)).toHaveLength(shopChoices(p.items, g.state, c).length + 1);
+  });
+  it('투자 물건은 늘 뒤에 붙고 금액 단계만큼 입력이 펼쳐진다', () => {
+    const g = pastNegotiation(apply(atReview(100_000), { t: 'pick', i: 0 }, c));
+    const p = pending(g);
+    if (p.kind !== 'shop') throw new Error('expected shop');
+    expect(p.items.slice(-2)).toEqual(['coin', 'dev-stock']);
+    const choices = shopChoices(p.items, g.state, c);
+    expect(choices.filter((x) => x.itemId === 'coin').length).toBe(3);
+    expect(validInputs(g, c)).toHaveLength(choices.length + 1);
+  });
+  it('투자 단계를 고르면 그 금액을 걸고, 풀매수면 번아웃이 붙고, 결과 카드에 단계 이름과 문구가 나온다', () => {
+    const g = pastNegotiation(apply(atReview(100_000), { t: 'pick', i: 0 }, c));
+    const p = pending(g);
+    if (p.kind !== 'shop') throw new Error('expected shop');
+    const choices = shopChoices(p.items, g.state, c);
+    const i = choices.findIndex((x) => x.itemId === 'dev-stock' && x.tier === 2);
+    const out = apply(g, { t: 'pick', i }, c);
+    const stake = choices[i].stake!;
+    expect(stake).toBe(g.state.assets);
+    expect(out.state.investNet).toBe(out.state.assets - g.state.assets);
+    expect(out.state.burnout).toBe(Math.min(100, g.state.burnout + ALL_IN_BURNOUT));
+    expect(out.outcome?.title).toContain('풀매수');
+    expect(out.outcome?.ok).toBeDefined();
+    expect(out.feed[0]).toContain('풀매수');
   });
   it('아무것도 못 사면 상점은 건너뛴다', () => {
     const g = apply({ ...atReview(0), state: makeState({ assets: 0, salary: 0 }) }, { t: 'pick', i: 0 }, c);
@@ -369,10 +394,46 @@ describe('상점', () => {
     expect(bought.state.purchases).toEqual([item.id]);
     if (!item.gamble) expect(bought.state.assets).toBe(g.state.assets - item.price);
     expect(bought.feed[0]).toContain(item.name);
-    const skipped = apply(g, { t: 'pick', i: p.items.length }, c);
+    const skipped = apply(g, { t: 'pick', i: shopChoices(p.items, g.state, c).length }, c);
     expect(skipped.state.assets).toBe(g.state.assets);
     expect(skipped.state.purchases).toEqual([]);
     expect(pending(skipped).kind).not.toBe('shop');
+  });
+});
+
+describe('시장 분위기', () => {
+  it('새 게임은 횡보장, 투자 손익 0', () => {
+    const g = newGame(setup, 1, CONTENT);
+    expect(g.state.market).toBe('flat');
+    expect(g.state.investNet).toBe(0);
+  });
+  it('같은 (setup, seed, log)면 market · investNet · assets가 같다', () => {
+    const a = playRandom(31);
+    const b = replay(setup, 31, a.log, CONTENT);
+    expect(b.state.market).toBe(a.state.market);
+    expect(b.state.investNet).toBe(a.state.investNet);
+    expect(b.state.assets).toBe(a.state.assets);
+  });
+  it('해마다 분위기가 바뀌고 여러 분위기가 나온다', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 5; seed++) {
+      let g = newGame(setup, seed, CONTENT);
+      const r = createRng(seed + 5);
+      for (let guard = 0; pending(g).kind !== 'ended' && guard < 3000; guard++) {
+        if (pending(g).kind === 'shop') seen.add(g.state.market);
+        g = apply(g, r.pick(validInputs(g, CONTENT)), CONTENT);
+      }
+    }
+    expect(seen).toEqual(new Set(['bull', 'flat', 'bear']));
+  });
+  it('은퇴한 해에는 분위기를 굴리지 않는다', () => {
+    const quit: GameEvent = { id: 'quit', when: {}, scheduledOnly: true, text: 'q', choices: [{ label: '떠난다', effects: { retire: true } }] };
+    const c: Content = { ...CONTENT, events: { ...CONTENT.events, quit } };
+    const state = makeState({ market: 'bear' });
+    const g: Game = { setup, seed: 1, rngState: 1, state, queue: [{ kind: 'event', eventId: 'quit' }, { kind: 'review' }], log: [], feed: [] };
+    const out = apply(g, { t: 'pick', i: 0 }, c);
+    expect(out.state.retired).toBe(true);
+    expect(out.state.market).toBe('bear');
   });
 });
 

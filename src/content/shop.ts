@@ -33,7 +33,11 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'jeonse', name: '전세 계약', category: 'life', price: 8000, when: { minCareerYear: 5 }, text: '보증금의 대부분은 은행 돈이다. 등기부등본을 읽는 법을 배웠다. 장애 리포트보다 어렵다.', effects: { story: '전셋집을 얻었다. 집주인 문자에는 아직도 심장이 뛴다.' } },
   { id: 'house', name: '내 집 마련', category: 'life', price: 11000, when: { flags: [shopFlag('jeonse')] }, text: '전세금을 빼서 계약금에 보탰다. 나머지는 대출 30년. 그래도 벽에 못은 마음대로 박는다.', effects: { burnout: -5, stats: { mental: 2 }, story: '내 집을 마련했다. 서버실보다 조용한 방이 생겼다.' } },
 
-  // 투자
-  { id: 'coin', name: '코인', category: 'invest', price: 1000, once: false, gamble: { chance: 0.35, win: 3, lose: 0.15 }, text: '백서를 읽었다. 이해는 못 했다. 차트는 어제와 같은 모양이다.', effects: { burnout: 3 } },
-  { id: 'dev-stock', name: '개발자 주식', category: 'invest', price: 3000, once: false, when: { minCareerYear: 3 }, gamble: { chance: 0.55, win: 1.7, lose: 0.6 }, text: '"내가 매일 쓰는 툴을 만드는 회사"라는 논리로 샀다.', effects: {} },
+  // 투자: price는 최소 투자금. 금액은 자산의 10% · 30% · 전액에서 고르고, 확률은 그해 시장 분위기를 따른다 (AGENTS.md 현실 기준표)
+  // 알트코인: 분위기 가중 기대값 약 0.99, 손실 확률 약 72%. 실패 −80%는 비트코인 2018년 −73%·2022년 −64%보다 나쁜 알트코인 수준.
+  // 번아웃은 풀매수(ALL_IN_BURNOUT)에서만 붙는다. 투자가 매년 진열되면서 산 때마다 붙이면 번아웃 엔딩이 늘었다
+  { id: 'coin', name: '알트코인', category: 'invest', price: 100, once: false, gamble: { chance: { bull: 0.4, flat: 0.25, bear: 0.12 }, win: 3, lose: 0.2 }, text: '백서를 읽었다. 이해는 못 했다. 차트는 어제와 같은 모양이다.', effects: {} },
+  // ETF: 가중 기대 연 +8.4%, 손실 해 약 33% (S&P500 1928~2025 약 27%, 코스피 약 40%의 사이).
+  // 좋은 해 +20%(S&P500 상승한 해 평균 수준), 나쁜 해 −15%(2022년 코스피 −24.9%보다 흔한 쪽)
+  { id: 'dev-stock', name: '판교 테크 ETF', category: 'invest', price: 100, once: false, gamble: { chance: { bull: 0.72, flat: 0.67, bear: 0.57 }, win: 1.2, lose: 0.85 }, text: "'내가 매일 쓰는 툴을 만드는 회사들'이라는 논리로 샀다. 분산 투자라 마음도 분산된다.", effects: {} },
 ];

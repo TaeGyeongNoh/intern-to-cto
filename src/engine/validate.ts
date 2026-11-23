@@ -1,7 +1,7 @@
 import { resolveCompanyId } from './career';
 import { DEFAULT_EDUCATION, DEFAULT_SERVICE, PROLOGUE_START, serviceAllowed } from './origin';
-import { shopFlag } from './shop';
-import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Condition, type Content, type Effects } from './types';
+import { MIN_STAKE, shopFlag, STAKE_TIERS } from './shop';
+import { MARKET_MOODS, POSITION_IDS, ROUTE_IDS, STAT_IDS, type Condition, type Content, type Effects } from './types';
 
 /** 이벤트에서 창업할 때 옮기는 회사 (루트별 창업 회사) */
 const FOUNDER_COMPANY = 'founder-{route}';
@@ -166,8 +166,26 @@ export function validateContent(c: Content): string[] {
     if (item.effects.next || item.effects.retire) errs.push(`${where}: next/retire are not supported in shop items`);
     for (const f of item.when?.flags ?? []) if (f.startsWith('shop:') && !shopFlags.has(f)) errs.push(`${where}: unknown shop flag ${f}`);
     const g = item.gamble;
-    if (g && (g.chance <= 0 || g.chance >= 1 || g.win < 0 || g.lose < 0)) errs.push(`${where}: invalid gamble`);
+    if (item.category === 'invest' && !g) errs.push(`${where}: invest items need gamble`);
+    if (item.category !== 'invest' && g) errs.push(`${where}: only invest items can gamble`);
+    if (g && (!MARKET_MOODS.every((m) => g.chance[m] > 0 && g.chance[m] < 1) || !(g.win > 1 && g.lose < 1 && g.lose >= 0)))
+      errs.push(`${where}: invalid gamble`);
+    if (item.category === 'invest') {
+      if (item.price < MIN_STAKE) errs.push(`${where}: invest price must be >= ${MIN_STAKE}`);
+      if (item.once !== false) errs.push(`${where}: invest items must be repeatable (once: false)`);
+      const lines = c.market.lines[item.id];
+      if (!lines) errs.push(`${where}: missing market lines`);
+      else if (lines.win.length === 0 || lines.lose.length === 0) errs.push(`${where}: market lines need win and lose`);
+    }
   }
+  for (const from of MARKET_MOODS) {
+    const row = c.market.transitions[from];
+    const ws = MARKET_MOODS.map((m) => row?.[m] ?? -1);
+    if (ws.some((w) => w < 0) || Math.abs(ws.reduce((a, b) => a + b, 0) - 1) > 1e-9) errs.push(`market transitions ${from}: weights must be >= 0 and sum to 1`);
+    if (!(c.market.headlines[from]?.length > 0)) errs.push(`market headlines ${from}: needs at least one`);
+  }
+  if (c.market.stakeLabels.length !== STAKE_TIERS.length || c.market.stakeLabels.some((x) => !x)) errs.push('market stakeLabels: needs one non-empty label per stake tier');
+  if (c.market.allInLose.length === 0) errs.push('market allInLose: needs at least one');
 
   const ids = new Set<string>();
   for (const e of c.endings) {

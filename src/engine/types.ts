@@ -157,6 +157,25 @@ export type CardDef = { id: CardId; name: string; color: string; views: ViewId[]
 
 export type HistoryRow = { year: number; age: number; companyId: string; title: string; rating: number; ovr: number; salary: number; assets?: number };
 
+/** 올해 연말 상점의 시장 분위기 */
+export type MarketMood = 'bull' | 'flat' | 'bear';
+export const MARKET_MOODS: readonly MarketMood[] = ['bull', 'flat', 'bear'];
+export const MARKET_LABELS: Record<MarketMood, string> = { bull: '상승장', flat: '횡보장', bear: '하락장' };
+
+/** 시장·투자 콘텐츠 (src/content/market.ts) */
+export type MarketContent = {
+  /** 올해 분위기 → 내년 분위기 가중치 (행 합 1) */
+  transitions: Record<MarketMood, Record<MarketMood, number>>;
+  /** 상점 상단 헤드라인 (연도로 고른다) */
+  headlines: Record<MarketMood, string[]>;
+  /** 금액 단계 이름 (STAKE_TIERS와 같은 길이) */
+  stakeLabels: string[];
+  /** 투자 물건별 결과 문구 (연도로 고른다) */
+  lines: Record<string, { win: string[]; lose: string[] }>;
+  /** 풀매수 실패에 덧붙이는 문구 */
+  allInLose: string[];
+};
+
 export type ShopCategory = 'gear' | 'growth' | 'rest' | 'life' | 'invest';
 export const SHOP_CATEGORY_LABELS: Record<ShopCategory, string> = {
   gear: '장비', growth: '자기계발', rest: '휴식', life: '인생', invest: '투자',
@@ -172,8 +191,8 @@ export type ShopItem = {
   /** 기본 true: 한 번 사면 다시 나오지 않는다 (`shop:{id}` 플래그) */
   once?: boolean;
   effects: Effects;
-  /** 투자: chance 확률로 price × win, 아니면 price × lose를 돌려받는다 */
-  gamble?: { chance: number; win: number; lose: number };
+  /** 투자: 건 금액(price는 최소 투자금)을 시장 분위기별 chance 확률로 × win, 아니면 × lose로 돌려받는다 */
+  gamble?: { chance: Record<MarketMood, number>; win: number; lose: number };
 };
 
 /** 시작 후보의 유형. 강점은 가장 높게, 약점은 가장 낮게 뽑힌다. */
@@ -245,6 +264,10 @@ export type GameState = {
   companyStage: Record<string, number | 'closed'>;
   /** 지금 회사에서 받은 스톡옵션 (만원, 상장 때 IPO_MULT배로 행사) */
   stock?: { companyId: string; value: number };
+  /** 올해 연말 상점의 시장 분위기 */
+  market: MarketMood;
+  /** 누적 투자 손익 (만원) */
+  investNet: number;
   /** 대체복무로 묶인 마지막 연차 (경력 연차 기준). yearsInCareer가 이보다 작으면 이직 제안이 없다. 0이면 묶이지 않음 */
   boundUntil: number;
 };
@@ -288,6 +311,7 @@ export type Content = {
   incidents: Record<string, Incident>;
   endings: Ending[];
   shop: Record<string, ShopItem>;
+  market: MarketContent;
   archetypes: Record<string, Archetype>;
   educations: Record<string, Education>;
   services: Record<string, Service>;

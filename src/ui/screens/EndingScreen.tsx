@@ -36,6 +36,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
   const isWhatap = st.endingId === 'whatap';
   const art = st.endingId ? ENDING_ART[st.endingId] : undefined;
   const badges = purchaseBadges(st.purchases);
+  const invested = st.purchases.some((id) => CONTENT.shop[id]?.category === 'invest');
   const { toast, show } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -104,6 +105,7 @@ export function EndingScreen({ game, onRestart, shared }: { game: Game; onRestar
           <Stat label="커리어" value={`${years}년`} />
           <Stat label="최고 연봉" value={won(st.maxSalary)} />
           <Stat label="순자산" value={won(st.assets)} />
+          {invested && <Stat label="투자 손익" value={`${st.investNet >= 0 ? '+' : '−'}${won(Math.abs(st.investNet))}`} />}
           <Stat label="막아낸 장애" value={`${r.incidentsResolved}/${r.incidentsTotal}`} />
           <Stat label="평균 MTTR" value={r.incidentsTotal ? `${avgMttr}분` : '—'} />
           <Stat label="거쳐 간 회사" value={`${st.companiesWorked.length}곳`} />

@@ -9,7 +9,8 @@ import { applyOrigin, firstSalary, originPrologue, PROLOGUE_START, resolveOrigin
 import { createRng } from './rng';
 import { negotiateChance, negotiatedSalary } from './salary';
 import { review, runYear } from './season';
-import { buyItem, pickShopItems } from './shop';
+import { buyItem, nextMarket, pickShopItems, shopChoices } from './shop';
+import { byYear } from './util';
 import { createInitialState, type Setup } from './state';
 import type { Content, GameState } from './types';
 
@@ -27,7 +28,7 @@ export type Pending =
   | { kind: 'review' }
   /** 별점 4 이상인 해의 연봉 협상. base: 자동 인상 제시안(이미 반영됨), prev·prevMax: 평가 전 연봉·최고연봉 */
   | { kind: 'negotiate'; rating: number; base: number; prev: number; prevMax: number }
-  /** 연말 상점: pick i는 items[i]를 사고, pick items.length는 건너뛴다 */
+  /** 연말 상점: pick i는 shopChoices(items)[i]를 사고(투자는 금액 단계까지), pick choices.length는 건너뛴다 */
   | { kind: 'shop'; items: string[] }
   /** forced: 지금 회사가 문을 닫아 남을 수 없다 ("남는다" 입력이 없다) */
   | { kind: 'offers'; offers: Offer[]; forced?: true }
@@ -102,7 +103,7 @@ export function validInputs(g: Game, c: Content): Input[] {
     case 'negotiate':
       return [pick(0), pick(1), ...(p.base > p.prev && stockEligible(s, c) ? [pick(2)] : [])];
     case 'shop':
-      return Array.from({ length: p.items.length + 1 }, (_, i) => pick(i));
+      return Array.from({ length: shopChoices(p.items, s, c).length + 1 }, (_, i) => pick(i));
     case 'offers':
       return Array.from({ length: p.offers.length + (p.forced ? 0 : 1) }, (_, i) => pick(i));
     default:
@@ -255,12 +256,21 @@ export function apply(g: Game, input: Input, c: Content): Game {
     }
     case 'shop': {
       const i = indexOf(input);
-      if (i < p.items.length) {
-        const r = buyItem(s, c.shop[p.items[i]], rng);
+      const choices = shopChoices(p.items, s, c);
+      if (i < choices.length) {
+        const ch = choices[i];
+        const item = c.shop[ch.itemId];
+        const label = ch.tier === undefined ? undefined : c.market.stakeLabels[ch.tier];
+        const r = buyItem(s, item, rng, ch.stake, label);
+        if (r.gamble) {
+          const lines = c.market.lines[item.id];
+          const line = lines ? byYear(r.gamble.ok ? lines.win : lines.lose, s.year) : '';
+          const allInLost = !r.gamble.ok && r.gamble.stake === s.assets;
+          const money = `${r.gamble.stake.toLocaleString('ko-KR')}만원 → ${r.gamble.back.toLocaleString('ko-KR')}만원`;
+          const detail = [line, allInLost ? byYear(c.market.allInLose, s.year) : '', money].filter(Boolean).join(' ');
+          result = { title: label ? `${item.name} · ${label}` : item.name, ok: r.gamble.ok, detail };
+        } else result = { title: item.name };
         s = r.state;
-        result = r.gamble
-          ? { title: c.shop[p.items[i]].name, ok: r.gamble.ok, detail: `${r.gamble.back.toLocaleString('ko-KR')}만원 회수` }
-          : { title: c.shop[p.items[i]].name };
         feed.push(...r.feed);
       } else feed.push('이번엔 지갑을 닫는다');
       break;
@@ -322,6 +332,8 @@ function drain(g: Game, c: Content): Game {
       }
       // 엑싯처럼 성장 판정으로 은퇴했으면 협상·상점·제안 없이 엔딩으로 간다
       if (!state.retired) {
+        // 올해 연말 상점의 시장 분위기 (은퇴한 해에는 굴리지 않는다)
+        state = { ...state, market: nextMarket(state.market, rng, c) };
         if (r.rating >= NEGOTIATE_MIN_RATING && state.yearsAtCompany >= NEGOTIATE_MIN_YEARS_AT_COMPANY && !closed && !state.flags.includes('founder'))
           q.push({ kind: 'negotiate', rating: r.rating, base: state.salary, prev: game.state.salary, prevMax: game.state.maxSalary });
         const items = pickShopItems(state, rng, c);

@@ -127,6 +127,37 @@ describe('상점 정보', () => {
   });
 });
 
+describe('투자', () => {
+  for (const market of ['bull', 'flat', 'bear'] as const) {
+    it(`상점: ${market} 시장 띠와 투자 단계 버튼`, async () => {
+      const { ShopScreen } = await import('./screens/ShopScreen');
+      const { makeState } = await import('../engine/testing');
+      const { MARKET_LABELS } = await import('../engine/types');
+      const { marketHeadline } = await import('../content/market');
+      const g = newGame({ name: '투자', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+      const items = ['chair', 'coin', 'dev-stock'];
+      const state = makeState({ assets: 10000, market });
+      const html = renderToString(<ShopScreen game={{ ...g, state, queue: [{ kind: 'shop' as const, items }] }} items={items} onInput={() => {}} />);
+      expect(html).toContain(MARKET_LABELS[market]);
+      expect(html).toContain(marketHeadline(market, state.year));
+      expect(html).toContain('투자 · 한 해 하나만 살 수 있다');
+      expect(html).toContain('맛보기 · 1,000만원');
+      expect(html).toContain('진심 · 3,000만원');
+      expect(html).toContain('풀매수 · 1억원');
+      expect(html).toContain('성공 +2억원 · 실패 −8,000만원');
+      expect(html).toContain(`${MARKET_LABELS[market]} ${Math.round(CONTENT.shop.coin.gamble!.chance[market] * 100)}% 확률로 ×3`);
+    });
+  }
+  it('엔딩 화면에 투자 손익 (투자를 안 했으면 숨김)', async () => {
+    const { EndingScreen } = await import('./screens/EndingScreen');
+    const { makeState } = await import('../engine/testing');
+    const g = newGame({ name: '엔딩', position: 'backend', route: 'commerce', candidate: 0 }, 1, CONTENT);
+    const ended = (over: object) => ({ ...g, state: makeState({ retired: true, endingId: 'ordinary', ...over }), queue: [] });
+    expect(renderToString(<EndingScreen game={ended({ purchases: ['coin'], investNet: -2350 })} onRestart={() => {}} />)).toContain('−2,350만원');
+    expect(renderToString(<EndingScreen game={ended({ purchases: ['keyboard'] })} onRestart={() => {}} />)).not.toContain('투자 손익');
+  });
+});
+
 describe('회사 생활', () => {
   it('협상 화면: 제시안, 득실 한 줄, 다음 직급 진행', async () => {
     const { makeState } = await import('../engine/testing');
