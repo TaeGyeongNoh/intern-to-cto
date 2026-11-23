@@ -53,7 +53,7 @@ export const ENDING_ART: Record<string, string> = {
 const EVENT_ART: Record<string, string> = {
   'adopt-commerce': evMonitoring, 'adopt-finance': evMonitoring, 'adopt-ai': evMonitoring,
   'lead-offer': evLead, keynote: evKeynote,
-  'founder-offer': evFounder, 'founder-outcome': evFounder,
+  'founder-offer': evFounder, 'founder-runway': evFounder,
   'ai-replacement': evAiReplace, rest: evBurnout,
   'ai-chatbot-1': evChatbot, 'ai-chatbot-2': evChatbot, 'ai-chatbot-3a': evChatbot, 'ai-chatbot-3b': evChatbot,
   'prologue-start': evPrologue, 'prologue-result': evPrologue,

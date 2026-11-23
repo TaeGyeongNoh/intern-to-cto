@@ -229,20 +229,16 @@ describe('이벤트 흐름', () => {
 });
 
 describe('이벤트로 은퇴', () => {
-  it('창업 결과로 은퇴해도 그 해 평가 기록이 남는다', () => {
-    const state = makeState({ flags: ['founder'], scheduled: [{ id: 'founder-outcome', companyId: makeState().companyId }] });
-    const g: Game = {
-      setup, seed: 1, rngState: 1, state,
-      queue: [{ kind: 'event', eventId: 'founder-outcome' }, { kind: 'review' }],
-      log: [], feed: [],
-    };
-    // 성공/실패와 무관하게 결과를 강제: 성공하는 시드를 찾는다
-    let out: Game | undefined;
-    for (let seed = 1; seed < 200 && !out?.state.retired; seed++) out = apply({ ...g, rngState: seed }, { t: 'pick', i: 0 }, CONTENT);
-    expect(out!.state.retired).toBe(true);
-    expect(pending(out!).kind).toBe('ended');
-    expect(out!.state.endingId).toBeDefined();
-    expect(out!.state.record.history.length).toBe(state.record.history.length + 1);
+  it('이벤트 결과로 은퇴해도 그 해 평가 기록이 남는다', () => {
+    const quit: GameEvent = { id: 'quit', when: {}, scheduledOnly: true, text: 'q', choices: [{ label: '떠난다', effects: { retire: true, story: '떠났다.' } }] };
+    const c: Content = { ...CONTENT, events: { ...CONTENT.events, quit } };
+    const state = makeState();
+    const g: Game = { setup, seed: 1, rngState: 1, state, queue: [{ kind: 'event', eventId: 'quit' }, { kind: 'review' }], log: [], feed: [] };
+    const out = apply(g, { t: 'pick', i: 0 }, c);
+    expect(out.state.retired).toBe(true);
+    expect(pending(out).kind).toBe('ended');
+    expect(out.state.endingId).toBeDefined();
+    expect(out.state.record.history.length).toBe(state.record.history.length + 1);
   });
 });
 

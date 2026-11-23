@@ -60,22 +60,23 @@ const GENERAL: GameEvent[] = [
   },
   {
     id: 'founder-offer',
-    weight: 0.5,
-    when: { minOvr: 62, minCareerYear: 8, notFlags: ['founder'] },
+    weight: 0.4,
+    when: { route: ['commerce', 'finance', 'ai-startup'], minOvr: 62, minCareerYear: 8, notFlags: ['founder'] },
     text: '전 동료가 같이 창업하자고 한다. 아이템은 "AI 에이전트용 무언가".',
     choices: [
-      { label: '창업한다', effects: { flags: ['founder'], next: 'founder-outcome', burnout: 10, story: '회사를 나와 창업했다.' } },
+      { label: '창업한다', effects: { flags: ['founder'], company: 'founder-{route}', burnout: 10, story: '회사를 나와 창업했다.' } },
       { label: '회사에 남는다', effects: {} },
     ],
   },
   {
-    id: 'founder-outcome',
-    scheduledOnly: true,
-    when: {},
-    text: '창업 1년. 통장 잔고와 투자사 미팅 일정을 번갈아 본다.',
+    id: 'founder-runway',
+    weight: 3,
+    when: { flags: ['founder'], minYearsAtCompany: 1 },
+    text: '통장 잔고를 월 고정비로 나눠 봤다. 런웨이 7개월. 엑셀이 계산을 두 번 해 줬는데 답이 같다.',
     choices: [
-      { label: '투자 유치에 올인한다', chance: { base: 0.35, stat: 'design' }, effects: { flags: ['exit'], retire: true, story: '회사를 매각하며 엑싯했다.' }, failEffects: { flags: ['founder-failed'], removeFlags: ['founder'], reputation: -5, burnout: 10, story: '회사를 접고 다시 개발자로 돌아왔다.' } },
-      { label: '흑자를 목표로 버틴다', chance: { base: 0.25, stat: 'mental' }, effects: { flags: ['exit'], retire: true, story: '작지만 단단한 회사를 키워 넘겼다.' }, failEffects: { flags: ['founder-failed'], removeFlags: ['founder'], reputation: -5, burnout: 10, story: '버티다 회사를 접고 다시 개발자로 돌아왔다.' } },
+      { label: '대표 월급을 반납한다', effects: { salary: -600, burnout: 5, story: '대표 월급을 반납했다. 팀원들 월급날은 지켰다.' } },
+      { label: '외주를 받아 버틴다', effects: { stats: { impl: 2 }, burnout: 8 } },
+      { label: '투자사 문을 두드린다', chance: { base: 0.4, stat: 'design' }, effects: { reputation: 3 }, failEffects: { burnout: 6 } },
     ],
   },
   {

@@ -15,6 +15,37 @@ const tinyStages = (level: number, baseSalary: number): GrowthStage[] => [
   { name: '시리즈 A', level: level + 5, baseSalary: baseSalary + 400, addCards: ['log'], up: 0, down: 0, text: SERIES_A },
 ];
 
+/*
+ * 창업 회사: 창업 → 시드 → 시리즈 A → 엑싯. 5년 생존(엑싯 포함) 약 37%, 창업자 중 엑싯 약 10~12%.
+ * 현실 기준: 창업기업 5년 생존율 약 34%(중기부), 신생기업 1년 생존 약 65%(경력자 창업이라 78%로),
+ * 엑싯은 전체 창업의 수%. 연봉 2,600은 2026년 최저임금 연환산(약 2,588만원).
+ * 엑싯 단계 baseSalary는 단조 증가 검사 때문에 4,300 (은퇴와 동시라 쓰이지 않는다).
+ */
+const FOUNDER_FAIL = { removeFlags: ['founder'], flags: ['founder-failed'] };
+const founderStages = (): GrowthStage[] => [
+  {
+    name: '창업', level: 40, baseSalary: 2600, up: 0.25, down: 0.22, text: '',
+    closeEffects: { ...FOUNDER_FAIL, stats: { design: 2, mental: 2 }, reputation: 1, story: '회사를 접었다. 사업자등록 말소 절차만큼은 확실히 배웠다.' },
+  },
+  {
+    name: '시드', level: 44, baseSalary: 3200, addCards: ['log'], up: 0.18, down: 0.15,
+    text: '{company}이/가 시드 투자를 받았다. 대표 월급이 처음으로 최저임금을 넘었다.',
+    closeEffects: { ...FOUNDER_FAIL, stats: { design: 3, mental: 2, infra: 2 }, reputation: 2, story: '투자금을 다 쓰고 회사를 접었다. 투자사에 보낸 마지막 메일이 제일 잘 쓴 메일이었다.' },
+  },
+  {
+    name: '시리즈 A', level: 50, baseSalary: 4200, addCards: ['server'], up: 0.15, down: 0.1,
+    text: '{company}이/가 시리즈 A를 마쳤다. 채용 공고에서 "대표와 가까운 거리에서 일합니다"를 지웠다.',
+    closeEffects: { ...FOUNDER_FAIL, stats: { design: 4, mental: 3, infra: 2 }, reputation: 4, story: '직원들 이직처를 다 챙기고 마지막으로 불을 껐다.' },
+  },
+  {
+    name: '엑싯', level: 55, baseSalary: 4300, up: 0, down: 0,
+    text: '{company}이/가 인수됐다. 계약서 서명은 3분, 실사는 3개월이었다.',
+    effects: { flags: ['exit'], retire: true, story: '내가 만든 회사를 넘기고 일선에서 물러났다.' },
+  },
+];
+const founder = (id: string, name: string, route: Company['route']): Company => ({
+  id, name, route, tier: 'startup', level: 40, baseSalary: 2600, cards: [], hidden: true, founder: true, stages: founderStages(),
+});
 
 export const COMPANIES: Company[] = [
   // 커머스
@@ -43,6 +74,10 @@ export const COMPANIES: Company[] = [
   { id: 'tiny-commerce', name: '오늘의떡집', route: 'commerce', tier: 'startup', level: 38, baseSalary: 3100, cards: [], tiny: true, stages: tinyStages(38, 3100) },
   { id: 'tiny-finance', name: '뱅크샐러드바', route: 'finance', tier: 'startup', level: 37, baseSalary: 3000, cards: [], tiny: true, stages: tinyStages(37, 3000) },
   { id: 'tiny-ai-startup', name: '프롬프트공방', route: 'ai-startup', tier: 'startup', level: 39, baseSalary: 3300, cards: [], tiny: true, stages: tinyStages(39, 3300) },
+  // 창업 회사 (루트별 하나, founder-offer로만 들어간다)
+  founder('founder-commerce', '장바구니랩', 'commerce'),
+  founder('founder-finance', '푼돈테크', 'finance'),
+  founder('founder-ai-startup', '에이전트하우스', 'ai-startup'),
   // 히든
   { id: 'whatap', name: '와탭랩스', route: 'whatap', tier: 'whatap', level: 55, baseSalary: 5500, cards: ['apm', 'server', 'k8s', 'db', 'log', 'browser', 'gpu', 'ai-agent-obs', 'whatap-ai'], hidden: true },
 ];

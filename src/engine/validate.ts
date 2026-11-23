@@ -3,6 +3,11 @@ import { PROLOGUE_START } from './game';
 import { shopFlag } from './shop';
 import { POSITION_IDS, ROUTE_IDS, STAT_IDS, type Condition, type Content, type Effects } from './types';
 
+/** 이벤트에서 창업할 때 옮기는 회사 (루트별 창업 회사) */
+const FOUNDER_COMPANY = 'founder-{route}';
+/** 성장 단계 effects·closeEffects에 쓸 수 있는 필드 (retire는 따로 검사) */
+const STAGE_EFFECT_KEYS = new Set(['stats', 'reputation', 'burnout', 'flags', 'removeFlags', 'traits', 'story', 'retire']);
+
 export function validateContent(c: Content): string[] {
   const errs: string[] = [];
   const cardIds = new Set<string>(Object.keys(c.cards));
@@ -19,6 +24,9 @@ export function validateContent(c: Content): string[] {
       if (!c.events[id]) errs.push(`${where}: ${key} → unknown event ${id}`);
     }
     if (!inEvent && (e.now || e.company)) errs.push(`${where}: now/company are only supported in event choices`);
+    const toFounder = e.company === FOUNDER_COMPANY;
+    if (inEvent && (e.flags ?? []).includes('founder') && !toFounder) errs.push(`${where}: founder flag needs company ${FOUNDER_COMPANY}`);
+    if (inEvent && toFounder && !(e.flags ?? []).includes('founder')) errs.push(`${where}: founder company needs founder flag`);
     if (e.company) {
       const ids = e.company.includes('{route}') ? ROUTE_IDS.map((r) => resolveCompanyId(e.company!, r)) : [e.company];
       for (const id of ids) if (!c.companies[id]) errs.push(`${where}: unknown company ${id}`);
@@ -69,11 +77,16 @@ export function validateContent(c: Content): string[] {
   for (const co of Object.values(c.companies))
     for (const card of co.cards) if (!cardIds.has(card)) errs.push(`company ${co.id}: unknown card ${card}`);
   if (!c.companies.whatap) errs.push('missing whatap company');
+  for (const r of ROUTE_IDS) {
+    const n = Object.values(c.companies).filter((co) => co.route === r && co.founder).length;
+    if (n !== 1) errs.push(`route ${r}: expected 1 founder company, got ${n}`);
+  }
   for (const co of Object.values(c.companies)) {
+    if (co.founder && (!co.hidden || !co.stages)) errs.push(`company ${co.id}: founder company must be hidden with stages`);
     const stages = co.stages;
     if (!stages) continue;
     const where = `company ${co.id}`;
-    if (co.hidden || (!co.start && co.tier !== 'startup' && co.tier !== 'mid')) errs.push(`${where}: stages not allowed (hidden or large+ non-start company)`);
+    if ((co.hidden && !co.founder) || (!co.start && co.tier !== 'startup' && co.tier !== 'mid')) errs.push(`${where}: stages not allowed (hidden or large+ non-start company)`);
     if (stages.length < 2) {
       errs.push(`${where}: needs at least 2 stages`);
       continue;
@@ -83,7 +96,17 @@ export function validateContent(c: Content): string[] {
       const at = `${where} stage ${i}`;
       if (i > 0 && (st.level <= stages[i - 1].level || st.baseSalary <= stages[i - 1].baseSalary)) errs.push(`${at}: level/baseSalary must increase`);
       for (const card of st.addCards ?? []) if (!cardIds.has(card)) errs.push(`${at}: unknown card ${card}`);
-      if (i === stages.length - 1) {
+      const isLast = i === stages.length - 1;
+      for (const [key, eff] of [['effects', st.effects], ['closeEffects', st.closeEffects]] as const) {
+        if (!eff) continue;
+        for (const f of Object.keys(eff)) if (!STAGE_EFFECT_KEYS.has(f)) errs.push(`${at}: ${key}.${f} not allowed`);
+      }
+      if (st.effects?.retire && !isLast) errs.push(`${at}: retire only in the last stage effects`);
+      if (st.closeEffects?.retire) errs.push(`${at}: closeEffects.retire not allowed`);
+      if (isLast && st.closeEffects) errs.push(`${at}: last stage cannot have closeEffects`);
+      if (co.founder && !isLast && !(st.closeEffects?.removeFlags ?? []).includes('founder'))
+        errs.push(`${at}: closeEffects must remove founder flag`);
+      if (isLast) {
         if (st.up !== 0 || st.down !== 0) errs.push(`${at}: last stage must have up = down = 0`);
       } else {
         if (st.ipo) errs.push(`${at}: ipo only on the last stage`);

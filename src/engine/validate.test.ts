@@ -135,4 +135,41 @@ describe('반복 구매', () => {
       expect(errsFor([st(), last()], { tier: 'large' })).toContain('stages not allowed');
     });
   });
+  describe('창업 회사', () => {
+    const fc = CONTENT.companies['founder-commerce'];
+    const close = { removeFlags: ['founder'], flags: ['founder-failed'] };
+    const errsWith = (over: Partial<Company>) =>
+      validateContent({ ...CONTENT, companies: { ...CONTENT.companies, 'founder-commerce': { ...fc, ...over } } }).join('\n');
+    const stages = (edit: (st: GrowthStage[]) => GrowthStage[]) => errsWith({ stages: edit(fc.stages!.map((x) => ({ ...x }))) });
+
+    it('지금 콘텐츠는 통과', () => expect(errsWith({})).toBe(''));
+    it('창업 회사는 숨은 회사이고 단계가 있어야 한다', () => {
+      expect(errsWith({ hidden: undefined })).toContain('company founder-commerce: founder company must be hidden with stages');
+      expect(errsWith({ stages: undefined })).toContain('founder company must be hidden with stages');
+    });
+    it('루트마다 창업 회사가 하나씩', () => {
+      const { ['founder-finance']: _, ...rest } = CONTENT.companies;
+      expect(validateContent({ ...CONTENT, companies: rest }).join('\n')).toContain('route finance: expected 1 founder company, got 0');
+    });
+    it('단계 효과에는 허용된 필드만', () => {
+      expect(stages((st) => { st[0].closeEffects = { ...close, salary: 100 }; return st; })).toContain('stage 0: closeEffects.salary not allowed');
+      expect(stages((st) => { st[1].effects = { company: 'x' }; return st; })).toContain('stage 1: effects.company not allowed');
+    });
+    it('retire는 마지막 단계 effects에서만', () => {
+      expect(stages((st) => { st[1].effects = { retire: true }; return st; })).toContain('stage 1: retire only in the last stage effects');
+      expect(stages((st) => { st[0].closeEffects = { ...close, retire: true }; return st; })).toContain('stage 0: closeEffects.retire not allowed');
+    });
+    it('마지막 단계에는 closeEffects가 없다', () => {
+      expect(stages((st) => { st[st.length - 1].closeEffects = close; return st; })).toContain('last stage cannot have closeEffects');
+    });
+    it('창업 회사 closeEffects는 founder 플래그를 지워야 한다', () => {
+      expect(stages((st) => { st[0].closeEffects = { flags: ['founder-failed'] }; return st; })).toContain('stage 0: closeEffects must remove founder flag');
+    });
+    it('founder 플래그와 창업 회사 이동은 함께', () => {
+      const ev = (effects: object) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects }] } } });
+      expect(validateContent(ev({ flags: ['founder'] })).join('\n')).toContain('event x#0: founder flag needs company founder-{route}');
+      expect(validateContent(ev({ company: 'founder-{route}' })).join('\n')).toContain('event x#0: founder company needs founder flag');
+      expect(validateContent(ev({ flags: ['founder'], company: 'founder-{route}' }))).toEqual([]);
+    });
+  });
 });
