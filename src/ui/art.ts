@@ -68,6 +68,7 @@ const EVENT_ART_PREFIX: [prefix: string, art: string][] = [
   ['blackfriday-', evBlackFriday],
   ['migration-', evMigration],
   ['msa-', evMsa],
+  ['tenure-', evLead],
 ];
 
 export const eventArt = (eventId: string): string | undefined =>

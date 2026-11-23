@@ -287,4 +287,39 @@ const MSA_ARC: GameEvent[] = [
   },
 ];
 
-export const EVENTS: GameEvent[] = [...GENERAL, ...AI_CHATBOT_ARC, ...BLACKFRIDAY_ARC, ...MIGRATION_ARC, ...MSA_ARC];
+/** 한 회사에 오래 남는 플레이의 숨 돌릴 구멍 (이직 말고도 번아웃을 덜 수단) */
+const TENURE: GameEvent[] = [
+  {
+    id: 'tenure-5',
+    when: { minYearsAtCompany: 5 },
+    weight: 3,
+    text: '근속 5년. 회사가 리프레시 휴가 2주와 금 한 돈을 줬다. 사내 위키의 절반은 네가 쓴 문서다.',
+    choices: [
+      { label: '휴가를 꽉 채워 쓴다', effects: { burnout: -20, story: '근속 5년 리프레시 휴가를 다녀왔다. 슬랙은 한 번만 열었다.' } },
+      { label: '휴가 대신 오래된 문서를 정리한다', effects: { burnout: -5, stats: { design: 2 }, traits: { 문화: 1 } } },
+    ],
+  },
+  {
+    id: 'tenure-transfer',
+    when: { minYearsAtCompany: 3, minBurnout: 45 },
+    once: false,
+    weight: 2,
+    text: '같은 회사, 다른 팀. 사내 이동 공고가 떴다. 옆 팀 리드가 커피를 사 주며 은근히 묻는다. "요즘 좀 지쳐 보이던데?"',
+    choices: [
+      { label: '새 팀으로 옮긴다', effects: { burnout: -15, reputation: -1, stats: { design: 1, impl: 1 }, story: '이직 대신 사내 이동을 택했다. 사원증은 그대로, 슬랙 채널은 전부 새로.' } },
+      { label: '정든 팀에 남는다', effects: {} },
+    ],
+  },
+  {
+    id: 'tenure-10',
+    when: { minYearsAtCompany: 10 },
+    weight: 3,
+    text: '근속 10년 감사패를 받았다. 신입 시절 네가 짠 코드가 아직 프로덕션에서 돈다. 주석은 "// 임시".',
+    choices: [
+      { label: '드디어 그 코드를 리팩터링한다', chance: { base: 0.5, stat: 'design' }, effects: { stats: { design: 3 }, reputation: 3, story: '10년 묵은 "임시" 코드를 지웠다. 배포 후 아무 일도 없었다. 그게 제일 무서웠다.' }, failEffects: { burnout: 6, reputation: -1 } },
+      { label: '사내 전설로 남겨 둔다', effects: { burnout: -15, traits: { 문화: 1 } } },
+    ],
+  },
+];
+
+export const EVENTS: GameEvent[] = [...GENERAL, ...TENURE, ...AI_CHATBOT_ARC, ...BLACKFRIDAY_ARC, ...MIGRATION_ARC, ...MSA_ARC];
