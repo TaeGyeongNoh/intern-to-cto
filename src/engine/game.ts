@@ -304,16 +304,21 @@ function drain(g: Game, c: Content): Game {
       let state = r.state;
       const feed = [...r.feed];
       const q: Pending[] = [];
+      let closed = false;
       if (!state.retired) {
         const grown = growCompany(state, rng, c);
+        closed = grown.closed;
         state = grown.state;
         feed.push(...grown.feed);
-        if (r.rating >= NEGOTIATE_MIN_RATING && !grown.closed && !state.flags.includes('founder'))
+      }
+      // 엑싯처럼 성장 판정으로 은퇴했으면 협상·상점·제안 없이 엔딩으로 간다
+      if (!state.retired) {
+        if (r.rating >= NEGOTIATE_MIN_RATING && !closed && !state.flags.includes('founder'))
           q.push({ kind: 'negotiate', rating: r.rating, base: state.salary, prev: game.state.salary, prevMax: game.state.maxSalary });
         const items = pickShopItems(state, rng, c);
         if (items.length > 0) q.push({ kind: 'shop', items });
-        const offers = generateOffers(state, rng, c, { forced: grown.closed });
-        if (grown.closed) q.push({ kind: 'offers', offers, forced: true });
+        const offers = generateOffers(state, rng, c, { forced: closed });
+        if (closed) q.push({ kind: 'offers', offers, forced: true });
         else if (offers.length > 0) q.push({ kind: 'offers', offers });
         q.push({ kind: 'year' });
       }

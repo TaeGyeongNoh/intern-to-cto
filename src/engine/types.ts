@@ -126,6 +126,10 @@ export type GrowthStage = {
   text: string;
   /** 상장 단계 (마지막 단계에만). 상장할 수 있는 회사만 스톡옵션을 준다 */
   ipo?: true;
+  /** 이 단계에 도달했을 때 적용 (stats, reputation, burnout, flags, removeFlags, traits, story, retire만. retire는 마지막 단계만) */
+  effects?: Effects;
+  /** 이 단계에서 폐업할 때 적용 (effects와 같되 retire 금지) */
+  closeEffects?: Effects;
 };
 
 export type Company = {
@@ -143,6 +147,8 @@ export type Company = {
   tiny?: boolean;
   /** 성장 단계 (스타트업만) */
   stages?: GrowthStage[];
+  /** 창업 회사. hidden이고 이벤트 company 효과로만 들어간다. founder 플래그가 있어도 성장 판정을 굴린다 */
+  founder?: true;
 };
 
 export type CardDef = { id: CardId; name: string; color: string; views: ViewId[] };

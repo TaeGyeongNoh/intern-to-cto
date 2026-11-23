@@ -455,3 +455,63 @@ describe('연봉 협상', () => {
     expect(apply(frozen, { t: 'pick', i: 1 }, CONTENT)).toEqual(apply(g, { t: 'pick', i: 1 }, CONTENT));
   });
 });
+
+describe('창업 회사', () => {
+  const founderContent = (up: number, down: number): Content => {
+    const go: GameEvent = {
+      id: 'go', when: {}, scheduledOnly: true, text: 'go',
+      choices: [{ label: '창업한다', effects: { flags: ['founder'], company: 'founder-{route}', burnout: 10 } }],
+    };
+    return {
+      ...CONTENT,
+      events: { ...CONTENT.events, go },
+      companies: {
+        ...CONTENT.companies,
+        'founder-commerce': {
+          id: 'founder-commerce', name: '장바구니랩', route: 'commerce', tier: 'startup', level: 40, baseSalary: 2600, cards: [], hidden: true, founder: true,
+          stages: [
+            { name: '창업', level: 40, baseSalary: 2600, up, down, text: '', closeEffects: { removeFlags: ['founder'], flags: ['founder-failed'], reputation: 1 } },
+            { name: '엑싯', level: 55, baseSalary: 4300, up: 0, down: 0, text: '{company}이/가 인수됐다.', effects: { flags: ['exit'], retire: true } },
+          ],
+        },
+      },
+    };
+  };
+  const atFounding = (seed = 1): Game => ({
+    setup, seed: 1, rngState: seed,
+    state: makeState({ yearsInCareer: 9, age: 33, salary: 7000, maxSalary: 7500, burnout: 0, reputation: 40 }),
+    queue: [{ kind: 'event', eventId: 'go' }, { kind: 'review' }], log: [], feed: [],
+  });
+
+  it('창업하면 창업 회사로 옮기고 연봉은 그 회사 기본값, 최고연봉은 그대로', () => {
+    const c = founderContent(0, 0);
+    const g = apply(atFounding(), { t: 'pick', i: 0 }, c);
+    expect(g.state.companyId).toBe('founder-commerce');
+    expect(g.state.flags).toContain('founder');
+    expect(g.state.maxSalary).toBe(7500);
+    expect(g.state.record.history.at(-1)?.salary).toBeLessThan(4000);
+  });
+  it('창업 회사가 폐업한 해에는 강제 이직 제안이 1건 이상 나온다', () => {
+    const c = founderContent(0, 1);
+    for (let seed = 1; seed < 30; seed++) {
+      let g = apply(atFounding(seed), { t: 'pick', i: 0 }, c);
+      expect(g.state.companyStage['founder-commerce']).toBe('closed');
+      expect(g.state.flags).toContain('founder-failed');
+      while (pending(g).kind !== 'offers') g = apply(g, validInputs(g, c).at(-1)!, c);
+      const p = pending(g);
+      if (p.kind !== 'offers') throw new Error('expected offers');
+      expect(p.forced).toBe(true);
+      expect(p.offers.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+  it('엑싯한 해에는 상점·제안 없이 바로 founder-exit 엔딩', () => {
+    const c = founderContent(1, 0);
+    const g = apply(atFounding(), { t: 'pick', i: 0 }, c);
+    expect(g.queue).toEqual([{ kind: 'ended' }]);
+    expect(g.state.endingId).toBe('founder-exit');
+  });
+  it('같은 입력이면 같은 결과 (결정론)', () => {
+    const c = founderContent(0.3, 0.3);
+    expect(apply(atFounding(5), { t: 'pick', i: 0 }, c)).toEqual(apply(atFounding(5), { t: 'pick', i: 0 }, c));
+  });
+});

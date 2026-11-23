@@ -56,14 +56,15 @@ export function stockEligible(s: GameState, c: Content): boolean {
 
 /**
  * 연말 회사 성장 판정 (지금 다니는 회사만). 오르면 카드가 생기고, 상장하면 스톡옵션을 행사하고,
- * 폐업하면 closed가 되어 그 해 이직이 강제된다.
+ * 폐업하면 closed가 되어 그 해 이직이 강제된다. 단계 effects·closeEffects가 있으면 이어서 적용한다.
+ * 창업 회사(co.founder)는 founder 플래그가 있어도 판정한다.
  */
 export function growCompany(s: GameState, rng: Rng, c: Content): { state: GameState; feed: string[]; closed: boolean } {
   const id = s.companyId;
   const co = c.companies[id];
   const stages = co.stages;
   const k = s.companyStage[id] ?? 0;
-  if (!stages || k === 'closed' || k >= stages.length - 1 || s.yearsInCareer < 1 || s.flags.includes('founder'))
+  if (!stages || k === 'closed' || k >= stages.length - 1 || s.yearsInCareer < 1 || (s.flags.includes('founder') && !co.founder))
     return { state: s, feed: [], closed: false };
   const { up, down } = stages[k];
   const roll = rng.weighted<'up' | 'down' | 'stay'>([
@@ -75,13 +76,16 @@ export function growCompany(s: GameState, rng: Rng, c: Content): { state: GameSt
   const line = (text: string) => `${s.year}년 · ${text}`;
   if (roll === 'down') {
     const text = fillCompany(CLOSE_TEXT, co.name);
-    const state: GameState = {
+    const closedState: GameState = {
       ...s,
       companyStage: { ...s.companyStage, [id]: 'closed' },
       stock: undefined,
       record: { ...s.record, story: [...s.record.story, line(text)] },
     };
-    return { state, feed: [text], closed: true };
+    // closeEffects가 founder 플래그를 지워야 이어지는 강제 이직 제안이 채워진다
+    const close = stages[k].closeEffects;
+    const state = close ? applyEffects(closedState, close) : closedState;
+    return { state, feed: close?.story ? [text, close.story] : [text], closed: true };
   }
   const stage = stages[k + 1];
   const text = fillCompany(stage.text, co.name);
@@ -92,6 +96,10 @@ export function growCompany(s: GameState, rng: Rng, c: Content): { state: GameSt
     const paid = `스톡옵션 ${payout.toLocaleString('ko-KR')}만원을 행사했다. 종이가 진짜 돈이 됐다.`;
     feed.push(paid);
     state = { ...state, assets: state.assets + payout, stock: undefined, record: { ...state.record, story: [...state.record.story, line(paid)] } };
+  }
+  if (stage.effects) {
+    state = applyEffects(state, stage.effects);
+    if (stage.effects.story) feed.push(stage.effects.story);
   }
   return { state, feed, closed: false };
 }

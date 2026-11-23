@@ -135,3 +135,60 @@ describe('growCompany', () => {
     expect(s.companyStage).toEqual({ other: 1 });
   });
 });
+
+describe('창업 회사 성장', () => {
+  const founderCo: Company = {
+    id: 'mine', name: '내회사', route: 'commerce', tier: 'startup', level: 40, baseSalary: 2600, cards: [], hidden: true, founder: true,
+    stages: [
+      { name: '창업', level: 40, baseSalary: 2600, up: 0.5, down: 0.2, text: '', closeEffects: { removeFlags: ['founder'], flags: ['founder-failed'], reputation: 1, stats: { design: 2 }, story: '접었다.' } },
+      { name: '시드', level: 44, baseSalary: 3200, up: 0.5, down: 0.2, text: '{company}이/가 시드를 받았다.', effects: { reputation: 2 }, closeEffects: { removeFlags: ['founder'], flags: ['founder-failed'], reputation: 3 } },
+      { name: '엑싯', level: 55, baseSalary: 4300, up: 0, down: 0, text: '{company}이/가 인수됐다.', effects: { flags: ['exit'], retire: true, story: '넘겼다.' } },
+    ],
+  };
+  const force = (up: number, down: number): Content => ({
+    ...CONTENT,
+    companies: { ...CONTENT.companies, mine: { ...founderCo, stages: founderCo.stages!.map((st, i, all) => (i === all.length - 1 ? st : { ...st, up, down })) } },
+  });
+  const at = (over: Partial<GameState> = {}) => makeState({ companyId: 'mine', yearsInCareer: 9, flags: ['founder'], reputation: 30, ...over });
+
+  it('founder 플래그가 있어도 창업 회사에서는 성장 판정을 굴린다', () => {
+    const r = growCompany(at(), createRng(1), force(1, 0));
+    expect(r.state.companyStage.mine).toBe(1);
+  });
+  it('단계에 오르면 그 단계 effects를 적용한다', () => {
+    const r = growCompany(at(), createRng(1), force(1, 0));
+    expect(r.state.reputation).toBe(32);
+    expect(r.feed[0]).toBe('내회사가 시드를 받았다.');
+  });
+  it('엑싯 단계에 도달하면 exit 플래그와 은퇴', () => {
+    const r = growCompany(at({ companyStage: { mine: 1 } }), createRng(1), force(1, 0));
+    expect(r.state.companyStage.mine).toBe(2);
+    expect(r.state.flags).toEqual(expect.arrayContaining(['founder', 'exit']));
+    expect(r.state.retired).toBe(true);
+    expect(r.state.record.story.at(-1)).toContain('넘겼다.');
+  });
+  it('폐업하면 그 단계 closeEffects를 적용하고 founder를 지운다', () => {
+    const s = at({ companyStage: { mine: 1 } });
+    const r = growCompany(s, createRng(1), force(0, 1));
+    expect(r.closed).toBe(true);
+    expect(r.state.companyStage.mine).toBe('closed');
+    expect(r.state.flags).not.toContain('founder');
+    expect(r.state.flags).toContain('founder-failed');
+    expect(r.state.reputation).toBe(33);
+  });
+  it('창업 단계 폐업은 스탯과 문장이 남는다', () => {
+    const s = at();
+    const r = growCompany(s, createRng(1), force(0, 1));
+    expect(r.state.stats.design).toBe(s.stats.design + 2);
+    expect(r.state.record.story.at(-1)).toContain('접었다.');
+    expect(r.feed[0]).toContain('내회사가 문을 닫는다');
+  });
+  it('입력 상태를 바꾸지 않는다', () => {
+    const s = Object.freeze(at({ companyStage: Object.freeze({ mine: 1 }) as GameState['companyStage'] }));
+    const flags = [...s.flags];
+    growCompany(s, createRng(1), force(0, 1));
+    growCompany(s, createRng(1), force(1, 0));
+    expect(s.flags).toEqual(flags);
+    expect(s.companyStage).toEqual({ mine: 1 });
+  });
+});
