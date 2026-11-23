@@ -3,6 +3,7 @@ import { applyEffects } from './effects';
 import { withJosa } from './josa';
 import { choiceChance, choiceLocked, pickEvent } from './events';
 import { actionChance, mttrMinutes, optionAvailable, pickIncidents, POSTMORTEM_CHOICES, POSTMORTEM_PUBLISH, shuffledOrder } from './incident';
+import { diffState, type Outcome } from './outcome';
 import { createRng } from './rng';
 import { review, runYear } from './season';
 import { buyItem, pickShopItems } from './shop';
@@ -11,6 +12,7 @@ import type { Content, GameState } from './types';
 
 export type { Setup } from './state';
 export type { Offer } from './career';
+export type { Outcome, Delta } from './outcome';
 
 export type Pending =
   | { kind: 'year' }
@@ -36,6 +38,8 @@ export type Game = {
   log: Input[];
   /** 마지막 apply에서 일어난 일 (UI 표시용) */
   feed: string[];
+  /** 마지막 apply에서 플레이어가 고른 것의 결과 (UI 결과 카드용, 없으면 undefined) */
+  outcome?: Outcome;
 };
 
 const pick = (i: number): Input => ({ t: 'pick', i });
@@ -101,6 +105,8 @@ export function apply(g: Game, input: Input, c: Content): Game {
   const rng = createRng(g.rngState);
   let s = g.state;
   const feed: string[] = [];
+  const before = g.state;
+  let result: Omit<Outcome, 'deltas'> | undefined;
   let front: Pending[] = [];
 
   switch (p.kind) {
@@ -133,6 +139,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       if (eff.company) s = moveToCompany(s, eff.company, c);
       s = applyEffects(s, eff);
       if (eff.now) front = [{ kind: 'event', eventId: eff.now }];
+      result = chance === undefined ? { title: ch.label } : { title: ch.label, ok };
       feed.push(chance === undefined ? ch.label : `${ch.label} — ${ok ? '성공' : '실패'}`);
       break;
     }
@@ -176,6 +183,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
           mttrTotalMin: s.record.mttrTotalMin + mttr,
         },
       };
+      result = { title: a.label, ok, detail: `MTTR ${mttr}분` };
       feed.push(`${ok ? '복구' : '복구 실패'} — ${a.label} (MTTR ${mttr}분)`);
       front = [{ kind: 'postmortem', incidentId: inc.id, resolved: ok }];
       break;
@@ -192,6 +200,7 @@ export function apply(g: Game, input: Input, c: Content): Game {
       else if (i === 1) {
         if (rng.chance(0.5)) s = { ...s, recur: [...s.recur, p.incidentId] };
       } else s = applyEffects(s, { reputation: -4, traits: { 정치력: 1 } });
+      result = { title: POSTMORTEM_CHOICES[i] };
       feed.push(POSTMORTEM_CHOICES[i]);
       break;
     }
@@ -200,6 +209,9 @@ export function apply(g: Game, input: Input, c: Content): Game {
       if (i < p.items.length) {
         const r = buyItem(s, c.shop[p.items[i]], rng);
         s = r.state;
+        result = r.gamble
+          ? { title: c.shop[p.items[i]].name, ok: r.gamble.ok, detail: `${r.gamble.back.toLocaleString('ko-KR')}만원 회수` }
+          : { title: c.shop[p.items[i]].name };
         feed.push(...r.feed);
       } else feed.push('이번엔 지갑을 닫는다');
       break;
@@ -220,8 +232,9 @@ export function apply(g: Game, input: Input, c: Content): Game {
       throw new Error(`no input expected for ${p.kind}`);
   }
 
+  const outcome = result && { ...result, deltas: diffState(before, s, c) };
   return drain(
-    { ...g, rngState: rng.getState(), state: s, queue: [...front, ...g.queue.slice(1)], log: [...g.log, input], feed },
+    { ...g, rngState: rng.getState(), state: s, queue: [...front, ...g.queue.slice(1)], log: [...g.log, input], feed, outcome },
     c,
   );
 }
