@@ -8,6 +8,31 @@ const FOUNDER_COMPANY = 'founder-{route}';
 /** 성장 단계 effects·closeEffects에 쓸 수 있는 필드 (retire는 따로 검사) */
 const STAGE_EFFECT_KEYS = new Set(['stats', 'reputation', 'burnout', 'flags', 'removeFlags', 'traits', 'story', 'retire']);
 
+/**
+ * 프롤로그에서만 뜨는 이벤트: 시작 이벤트들에서 now로 닿고, scheduledOnly이며,
+ * 프롤로그 밖 이벤트가 next/now로 부르지 않고, 누구도 next로 예약하지 않는다.
+ */
+function prologueChain(c: Content, starts: string[]): Set<string> {
+  const reach = new Set<string>();
+  const stack = starts.filter((id) => c.events[id]);
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    if (reach.has(id)) continue;
+    reach.add(id);
+    for (const ch of c.events[id].choices)
+      for (const e of [ch.effects, ch.failEffects]) if (e?.now && c.events[e.now]) stack.push(e.now);
+  }
+  const ok = new Set<string>();
+  for (const id of reach) {
+    if (!c.events[id].scheduledOnly) continue;
+    const calledFromOutside = Object.values(c.events).some((ev) =>
+      ev.choices.some((ch) => [ch.effects, ch.failEffects].some((e) => e?.next === id || (e?.now === id && !reach.has(ev.id)))),
+    );
+    if (!calledFromOutside) ok.add(id);
+  }
+  return ok;
+}
+
 export function validateContent(c: Content): string[] {
   const errs: string[] = [];
   const cardIds = new Set<string>(Object.keys(c.cards));
@@ -68,6 +93,14 @@ export function validateContent(c: Content): string[] {
 
   for (const ev of Object.values(c.events)) {
     if (ev.scheduledOnly && !targeted.has(ev.id)) errs.push(`event ${ev.id}: scheduledOnly but never targeted by next/now`);
+  }
+
+  // `{route}` 회사는 일반 루트에만 있다. 와탭 루트에서 뜨면 회사를 찾지 못하므로 when.route로 막는다.
+  // 프롤로그(첫 해 전)는 루트가 항상 일반 루트라 예외: 시작 이벤트에서 now로만 이어지고 next로는 불리지 않는 scheduledOnly 이벤트.
+  const prologueOnly = prologueChain(c, [PROLOGUE_START]);
+  for (const ev of Object.values(c.events)) {
+    const usesRoute = ev.choices.some((ch) => [ch.effects, ch.failEffects].some((e) => e?.company?.includes('{route}')));
+    if (usesRoute && !(ev.when.route?.length) && !prologueOnly.has(ev.id)) errs.push(`event ${ev.id}: {route} company needs when.route`);
   }
 
   for (const r of ROUTE_IDS) {

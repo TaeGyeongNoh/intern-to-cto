@@ -169,7 +169,34 @@ describe('반복 구매', () => {
       const ev = (effects: object) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', effects }] } } });
       expect(validateContent(ev({ flags: ['founder'] })).join('\n')).toContain('event x#0: founder flag needs company founder-{route}');
       expect(validateContent(ev({ company: 'founder-{route}' })).join('\n')).toContain('event x#0: founder company needs founder flag');
-      expect(validateContent(ev({ flags: ['founder'], company: 'founder-{route}' }))).toEqual([]);
+      const routed = (effects: object) => ({ ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: { route: ['commerce' as const] }, text: 'x', choices: [{ label: 'a', effects }] } } });
+      expect(validateContent(routed({ flags: ['founder'], company: 'founder-{route}' }))).toEqual([]);
+    });
+    it('{route} 회사로 옮기는 이벤트는 일반 루트에서만 (와탭 루트면 회사가 없다)', () => {
+      const ev = (when: object, extra: Record<string, unknown> = {}) => ({
+        ...CONTENT,
+        events: { ...CONTENT.events, x: { id: 'x', when, text: 'x', choices: [{ label: 'a', effects: { company: 'tiny-{route}' } }] }, ...extra },
+      });
+      expect(validateContent(ev({})).join('\n')).toContain('event x: {route} company needs when.route');
+      expect(validateContent(ev({ route: [] })).join('\n')).toContain('event x: {route} company needs when.route');
+      expect(validateContent(ev({ route: ['commerce', 'finance'] }))).toEqual([]);
+      // 실패 효과도 본다
+      const fail = { ...CONTENT, events: { ...CONTENT.events, x: { id: 'x', when: {}, text: 'x', choices: [{ label: 'a', chance: { base: 0.5 }, effects: {}, failEffects: { company: 'tiny-{route}' } }] } } };
+      expect(validateContent(fail).join('\n')).toContain('event x: {route} company needs when.route');
+      // next로 예약되어 나중에 뜨는 이벤트도 막는다 (프롤로그 밖)
+      const later = {
+        ...CONTENT,
+        events: {
+          ...CONTENT.events,
+          y: { id: 'y', when: {}, text: 'y', choices: [{ label: 'a', effects: { next: 'x' } }] },
+          x: { id: 'x', scheduledOnly: true, when: {}, text: 'x', choices: [{ label: 'a', effects: { company: 'tiny-{route}' } }] },
+        },
+      };
+      expect(validateContent(later).join('\n')).toContain('event x: {route} company needs when.route');
+    });
+    it('프롤로그에서 now로만 이어지는 이벤트는 루트 제한 없이 {route} 회사를 쓸 수 있다', () => {
+      expect(CONTENT.events['prologue-result'].when.route).toBeUndefined();
+      expect(validateContent(CONTENT)).toEqual([]);
     });
   });
 });
